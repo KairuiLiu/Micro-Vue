@@ -2,8 +2,9 @@
   <img src="./doc/image/logo.svg" width="128" height="128"/>
   <h2>micro-vue</h2>
   <p>
-    <strong>Simple Vue.js implementation</strong>
+    <strong>Simple Vue.js Implementation</strong>
   </p>
+
 
 
   <p>
@@ -15,9 +16,9 @@
   <h4>
     <a href="">Live Demo</a>
     <span> | </span>
-    <a href="https://github.com/KairuiLiu/micro-vue/blob/master/README.md">English</a>
+    <a href="https://github.com/KairuiLiu/micro-vue/blob/master/README-EN.md">English</a>
     <span> | </span>
-    <a href="https://github.com/KairuiLiu/micro-vue/blob/master/README-EN.md">简体中文</a>
+    <a href="https://github.com/KairuiLiu/micro-vue/blob/master/README.md">简体中文</a>
   </h4>
 
 
