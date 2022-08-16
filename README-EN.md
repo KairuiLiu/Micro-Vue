@@ -39,5 +39,5 @@
 
 ### 🥰 Reference
 
-- GitHub. 2022. *GitHub - cuixiaorui/mini-vue: 实现最简 vue3 模型( Help you learn more efficiently vue3 source code )*. [online] Available at: <https://github.com/cuixiaorui/mini-vue> 
+- GitHub. 2022. *GitHub - [cuixiaorui/mini-vue](cuixiaorui/mini-vue): 实现最简 vue3 模型( Help you learn more efficiently vue3 source code )*. [online]
 - Huo, C., 2022. *Vue.js 设计与实现*. Beijing: Posts & Telecom Press.
