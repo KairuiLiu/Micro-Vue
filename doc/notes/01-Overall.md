@@ -69,9 +69,9 @@
 
 `reactive` 是 `Reactivity` 的基础. 负责实现对象的响应式, 并向上提供调用时方法. 基本思想就是借助 ES6 的 `Proxy` 自定义 `get & set`
 
-1. 转到 `mini-vue/../__tests__/reactive.spec.ts`, 发现测试的主要目的是看 `reactive` 构造方法. 
+1. 转到 `mini-vue/../__tests__/reactive.spec.ts`, 发现测试的主要目的是看 `reactive` 构造方法.
 
-2. 转到 `mini-vue/../src/reactive.ts`, 发现定义了 `reactive`, `readonly` 等方法, 这些方法都交由 `createReactiveObject` 处理. 
+2. 转到 `mini-vue/../src/reactive.ts`, 发现定义了 `reactive`, `readonly` 等方法, 这些方法都交由 `createReactiveObject` 处理.
 
    观察 `createReactiveObject`, 可以得到三个调用参数意义:
 
@@ -94,7 +94,7 @@
      const proxy = new Proxy(target, baseHandlers);
      ```
 
-     得出该方法就是 Proxy([MDN](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Proxy)) 的 `get & set` 对象. 不同类型的 Proxy 有不同的 `baseHandlers` 
+     得出该方法就是 Proxy([MDN](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Proxy)) 的 `get & set` 对象. 不同类型的 Proxy 有不同的 `baseHandlers`
 
 3. 转到 `mini-vue/../src/baseHandlers.ts` 发现模块主要是提供不同的 `get & set` 而这些都是由两个 `create` 函数实现的, 尝试理解
 
@@ -159,7 +159,7 @@ Vue 的实现就比较流畅. 既然我 `effect` 要立即执行一遍函数, �
         dummy = counter.num;
       }
     });
-  
+
     expect(dummy).toBe(-1);
     flag = true;
     counter.num = 2;
@@ -169,5 +169,178 @@ Vue 的实现就比较流畅. 既然我 `effect` 要立即执行一遍函数, �
 
   不只是 `mini-vue`, `vue/core` 的单元测试也存在这个问题. 但是在 `Vue` 代码中并不会出现无法追踪依赖的问题, 看来还有一些隐藏的优化没有找到
 
-### runtime-core 的基本流程
+### Runtime-core 的基本流程
 
+`runtime-core` 依赖 `Reactivity` 为 runtime 提供服务. 可以通过观察 Vue 文件的运行观察 `runtime-core` 的基本流程
+
+**文件基本结构**
+
+1. 转到 `mini-vue/packages/vue/example/helloWorld/` 的文件夹了解 vue 的基本工作流程
+
+2. 转到 `mini-vue/../helloWorld/index.html`, 只有个 `div#root` 和 `script`
+
+3. 转到 `mini-vue/.../helloWorld/main.js`
+
+   ```typescript
+   import { createApp } from '../../dist/mini-vue.esm-bundler.js';
+   import App from './App.js';
+
+   const rootContainer = document.querySelector('#root');
+   createApp(App).mount(rootContainer);
+   ```
+
+   引入了创建根组件的 `createApp` 与根组件 `App`, 查找了 html 文件中声明的挂载点, 然后通过 `createApp(App)` 打包根组件再将打包后结果挂载
+
+4. 转到 `mini-vue/../helloWorld/App.js` 发现定义了两个 vue2 风格的组建对象
+
+   ```typescript
+   {
+     name: 'App', // 组件名
+     setup() {}, // setup 方法
+
+     render() { // 渲染方法
+       return h('div', { tId: 1 }, [h('p', {}, '主页'), h(HelloWorld)]);
+     },
+   };
+   ```
+
+   - 前面有提到: `compiler-dom` 将 `<template>` 标签解析并编译为 render 函数. 在这里为了不追踪 `compiler-dom` 的行为, 我们直接将 `render` 给出
+
+   - `h` 为渲染函数, 参数分别是: 组建的 `ElementType`, 配置, 子组建数组, 可以看到, 这里第一个子组建是一个 `<p>` 第二个是一个组建
+
+   - 可以在对象中使用 `render`, 也可以让 `setup` 返回 `render` 方法, 即
+
+     ```typescript
+     {
+       name: 'App',
+       setup() {
+         return function() {
+           return h('div', { tId: 1 }, [h('p', {}, '主页'), h(HelloWorld)]);
+         }
+       },
+     };.
+     ```
+
+5. `createApp` 调用关系比较复杂, 直接使用 dev-tools 观察执行过程. 打开一个 http 服务器并转到 dev-tools下, 找到 `createApp.js` 并打下断点
+
+6. `createApp` 方法接受根组建配置对象 `App` 直接包了个对象, 有
+
+   - `_componment = App`
+   - `mount` 方法, 看语义, 这个方法接收挂载点, 将根组建创建为 `VNode` 并挂载到挂载点(`main.js` 中的 `rootContainer`), 执行完后 `main.js` 就结束了
+
+   我们需要继续分析的就是 `VNode` 的创建过程与 `render` 的挂载过程
+
+**组建初始化过程**
+
+1. 单步进入 `createVNode` 发现其声明了个 `vnode`.
+
+   将传入对象(`rootComponent / App`) 作为 `vnode.type`
+
+   在 `vnode` 上合并对象并配置 `shapeFlag` 用于标记类型
+
+   之后调用 `normalizeChildren` 并返回对象
+
+   - 进入 `normalizeChildren` 看起来是作了 `slot` 特判
+
+2. 单步进入 `render`, 其接收了处理后的 `vnode` 与挂载点 `rootContainer` 然后将参数直接交给 `patch`, 可以猜到 `patch` 会是一个很通用的函数
+
+   - 单步进入 `patch`, 其接收 `n1 = null`, `n2 = vnode`, `container`.
+
+     解构出了`n2` 的 `type = App` 与 `shapeFlag`,
+
+     通过预定义的 `Symbol` 判断对象类型, 进入 `default`,
+
+     通过位运算判断 `shapeFlag` 类型, 被识别为组建 (而不是像 `h('p', {}, '主页')` 一样的 Element) 执行 `processComponent`
+
+     - 单步进入 `processComponent`,
+
+       函数做了一个判断: 如果没有 `n1` 就认为 `n2` 还没有被挂载就挂载 `n2` 否则更新 `n2`
+
+       - 单步进入 `mountComponent`, 其接收了 `vnode`  与挂载点
+
+         将 `vnode` 转换为实例 `instance`, 执行 `setupComponent` 处理 `instance`
+
+         - 单步进入 `setupComponent` 发现其只是处理了 `prop` 与 `slot` 然后交给 `setupStatefulComponent` 继续配置
+
+           - 单步进入 `setupStatefulComponent`, 其接收 `instance`
+
+             将 `instance.ctx` 配置了 `PublicInstanceProxyHandlers` 代理(后面分析)
+
+             提取 `Component = APP`, `setup = APP.setup`
+
+             如果 `setup` 不存在就直接 `finishComponentSetup`
+
+             否则用 `setCurrentInstance` 打标记, 为 `setup` 传入参数并获取执行结果, 执行 `handleSetupResult` 处理结果
+
+             - 单步进入 `handleSetupResult` 该函数对 `setup` 结果执行判断
+
+               如果是 `function` 说明是导出了 `render` 函数, 将 `render` 赋值到 `instance.render` 上
+
+               否则导出的对象存入 `isntance.setupState`
+
+               最后执行 `finishComponentSetup` 与无 `setup` 的情况汇合
+
+             - 单步进入 `finishComponentSetup` 其接收 `instance`
+
+               若 `instance` 上没有 `render` 就尝试从 `template` 编译结果上获取并存入 `instrance.render`
+
+
+
+         - 单步进入 `setupRenderEffect` 发现其定义绑定了一个 `componentUpdateFn` 函数
+
+           - 打断点并进入 `componentUpdateFn` 函数
+
+             如果组建没有被挂载, 获取子节点, 获取 `instance` 的 Proxy, 构建子节点 `subTree` 并递归 `patch`, 当 `patch` 到 Element 时调用 `processElement` 挂载节点
+
+             否则更新节点(后面分析)
+
+**组建更新过程**
+
+为组建创建响应式并将 `reavtive` 导出到全局
+
+```typescript
+{
+  name: 'HelloWorld',
+  setup() {
+    const count = ref(10);
+    window.count = count;
+    return { count };
+  },
+  render() {
+    return h('div', { tId: 'helloWorld' }, `hello world: count: ${this.count}`);
+  },
+};
+```
+
+在 dev-tools 中修改 `count.value` 根据输出来自 `effect.ts` 进入文件并为 `run` 函数打上断点, 再次修改值, 发现 `run` 函数实际上就是执行了当时的 `componentUpdateFn`, 为 `componentUpdateFn` 中已挂载的判断部分打上断点
+
+1.  在断点处查看调用栈, 确定函数就是因为 `ref` 修改而引发的
+
+2. 在执行修改前先判断有没有 `nextTrick` 需要执行
+
+3. 获取新节点的 `vnode`
+
+4. 将老节点子树复制到新节点
+
+5. 触发生命周期函数
+
+6. `patch` 新节点
+
+   单步进入 `patch`, 接受老节点 `n1` 新节点 `n2` 这次更新的是一个 Element 于是进入 `ShapeFlags.ELEMENT`, 进入 `processElement`
+
+   - 单步进入 `processElement`, 这次老节点已经挂载, 直接走更新程序
+     - 单步进入 `updateElement` 该函数分别对比了 `props` 与 子节点并更新
+
+7. 触发生命周期函数
+
+**总结**
+
+```mermaid
+graph TB
+
+init((初始化组建)) --> createAPp[将App交给createApp, 将App包装为vnode] --- norm1[将vnode应用normalizeChildren配置, 交给render渲染]  --> renderdispatch[render直接交给patch] --> check[patch检查类型] --为组建--> processComponent[交给processComponent判断状态] --为新节点--> mountComponent[执行mountComponent挂载vnode: 构造instance, 运行 setup, 获取 render] --> effect[注册render的effect] --> run[执行effect, 检测是否挂载]  --没有--> patch2(递归patch子节点)
+
+update((reactive更新)) -.-> run[执行effect, 检测是否挂载] -.-挂载了-.-> newvnode[构造新vnode, diff检查, 复制属性] -.-> patch2 ==> check
+
+check ==为Element==> mountDir(直接修改DOM)
+```
