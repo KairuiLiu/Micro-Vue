@@ -191,7 +191,7 @@ Vue 的实现就比较流畅. 既然我 `effect` 要立即执行一遍函数, �
 
    引入了创建根组件的 `createApp` 与根组件 `App`, 查找了 html 文件中声明的挂载点, 然后通过 `createApp(App)` 打包根组件再将打包后结果挂载
 
-4. 转到 `mini-vue/../helloWorld/App.js` 发现定义了两个 vue2 风格的组建对象
+4. 转到 `mini-vue/../helloWorld/App.js` 发现定义了两个 vue2 风格的组件对象
 
    ```typescript
    {
@@ -206,7 +206,7 @@ Vue 的实现就比较流畅. 既然我 `effect` 要立即执行一遍函数, �
 
    - 前面有提到: `compiler-dom` 将 `<template>` 标签解析并编译为 render 函数. 在这里为了不追踪 `compiler-dom` 的行为, 我们直接将 `render` 给出
 
-   - `h` 为渲染函数, 参数分别是: 组建的 `ElementType`, 配置, 子组建数组, 可以看到, 这里第一个子组建是一个 `<p>` 第二个是一个组建
+   - `h` 为渲染函数, 参数分别是: 组件的 `ElementType`, 配置, 子组件数组, 可以看到, 这里第一个子组件是一个 `<p>` 第二个是一个组件
 
    - 可以在对象中使用 `render`, 也可以让 `setup` 返回 `render` 方法, 即
 
@@ -223,14 +223,14 @@ Vue 的实现就比较流畅. 既然我 `effect` 要立即执行一遍函数, �
 
 5. `createApp` 调用关系比较复杂, 直接使用 dev-tools 观察执行过程. 打开一个 http 服务器并转到 dev-tools下, 找到 `createApp.js` 并打下断点
 
-6. `createApp` 方法接受根组建配置对象 `App` 直接包了个对象, 有
+6. `createApp` 方法接受根组件配置对象 `App` 直接包了个对象, 有
 
    - `_componment = App`
-   - `mount` 方法, 看语义, 这个方法接收挂载点, 将根组建创建为 `VNode` 并挂载到挂载点(`main.js` 中的 `rootContainer`), 执行完后 `main.js` 就结束了
+   - `mount` 方法, 看语义, 这个方法接收挂载点, 将根组件创建为 `VNode` 并挂载到挂载点(`main.js` 中的 `rootContainer`), 执行完后 `main.js` 就结束了
 
    我们需要继续分析的就是 `VNode` 的创建过程与 `render` 的挂载过程
 
-**组建初始化过程**
+**组件初始化过程**
 
 1. 单步进入 `createVNode` 发现其声明了个 `vnode`.
 
@@ -250,7 +250,7 @@ Vue 的实现就比较流畅. 既然我 `effect` 要立即执行一遍函数, �
 
      通过预定义的 `Symbol` 判断对象类型, 进入 `default`,
 
-     通过位运算判断 `shapeFlag` 类型, 被识别为组建 (而不是像 `h('p', {}, '主页')` 一样的 Element) 执行 `processComponent`
+     通过位运算判断 `shapeFlag` 类型, 被识别为组件 (而不是像 `h('p', {}, '主页')` 一样的 Element) 执行 `processComponent`
 
      - 单步进入 `processComponent`,
 
@@ -290,13 +290,13 @@ Vue 的实现就比较流畅. 既然我 `effect` 要立即执行一遍函数, �
 
            - 打断点并进入 `componentUpdateFn` 函数
 
-             如果组建没有被挂载, 获取子节点, 获取 `instance` 的 Proxy, 构建子节点 `subTree` 并递归 `patch`, 当 `patch` 到 Element 时调用 `processElement` 挂载节点
+             如果组件没有被挂载, 获取子节点, 获取 `instance` 的 Proxy, 构建子节点 `subTree` 并递归 `patch`, 当 `patch` 到 Element 时调用 `processElement` 挂载节点
 
              否则更新节点(后面分析)
 
-**组建更新过程**
+**组件更新过程**
 
-为组建创建响应式并将 `reavtive` 导出到全局
+为组件创建响应式并将 `reavtive` 导出到全局
 
 ```typescript
 {
@@ -338,7 +338,7 @@ Vue 的实现就比较流畅. 既然我 `effect` 要立即执行一遍函数, �
 ```mermaid
 graph TB
 
-init((初始化组建)) --> createAPp[将App交给createApp, 将App包装为vnode] --- norm1[将vnode应用normalizeChildren配置, 交给render渲染]  --> renderdispatch[render直接交给patch] --> check[patch检查类型] --为组建--> processComponent[交给processComponent判断状态] --为新节点--> mountComponent[执行mountComponent挂载vnode: 构造instance, 运行 setup, 获取 render] --> effect[注册render的effect] --> run[执行effect, 检测是否挂载]  --没有--> patch2(递归patch子节点)
+init((初始化组件)) --> createAPp[将App交给createApp, 将App包装为vnode] --- norm1[将vnode应用normalizeChildren配置, 交给render渲染]  --> renderdispatch[render直接交给patch] --> check[patch检查类型] --为组件--> processComponent[交给processComponent判断状态] --为新节点--> mountComponent[执行mountComponent挂载vnode: 构造instance, 运行 setup, 获取 render] --> effect[注册render的effect] --> run[执行effect, 检测是否挂载]  --没有--> patch2(递归patch子节点)
 
 update((reactive更新)) -.-> run[执行effect, 检测是否挂载] -.-挂载了-.-> newvnode[构造新vnode, diff检查, 复制属性] -.-> patch2 ==> check
 
