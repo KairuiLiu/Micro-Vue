@@ -33,7 +33,7 @@ describe('Effect test', () => {
     expect(console.info).toBeCalledTimes(3);
   });
 
-  it('Shound run scheduler', () => {
+  it('Should run scheduler', () => {
     const origin = { foo: 1 };
     const observed = reactive(origin);
     let bar;

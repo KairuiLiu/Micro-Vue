@@ -1,19 +1,27 @@
-import { track, trigger } from './effect';
+import { proxyConfig, proxyReadonlyConfig } from './basicHandler';
+
+export const enum ReactiveFlag {
+  IS_REACTIVE = '__v_isReactive',
+  IS_READONLY = '__v_isReadonly',
+}
 
 export function reactive(origin) {
-  return new Proxy(origin, {
-    // 语法见 https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Proxy/Proxy/get
-    get(target, key, receiver) {
-      // 为啥 get 要收集, set 要trim
-      track(target, key);
-      return Reflect.get(target, key, receiver);
-    },
-    // 语法见 https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Proxy/Proxy/set
-    set(target, key, value, receiver) {
-      // 这两个顺序反了就寄了
-      const res = Reflect.set(target, key, value, receiver);
-      trigger(target, key);
-      return res;
-    },
-  });
+  return createReactiveObject(origin);
+}
+
+export function readonly(origin) {
+  return createReactiveObject(origin, true);
+}
+
+export function isReactive(value) {
+  return value[ReactiveFlag.IS_REACTIVE];
+}
+
+export function isReadonly(value) {
+  return value[ReactiveFlag.IS_READONLY];
+}
+
+function createReactiveObject(origin, readonly = false) {
+  if (readonly) return new Proxy(origin, proxyReadonlyConfig);
+  return new Proxy(origin, proxyConfig);
 }

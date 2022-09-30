@@ -319,6 +319,142 @@ TDD(Test-Driven Development), 是敏捷开发中的一项核心实践和技术, 
   ```
 3. 重构: 无
 
+
 ### 构建 `Proxy` 的 `Readonly`
 
+**需求**: `readonly` 与 `reactive` 类似, 不过不支持 `set`
+
+**需求分析**: 一个元素不支持 `set` 也就不可能触发依赖, 所以也没有必要做依赖收集. 所以只需要精简一下 `reactive`. 可以发现, 不同权限的变量只是在构造的时候采用不同的 `[GET]` 与 `[SET]` 策略. 可以将 `[GET]` 与 `[SET]` 抽离出来
+
+1. 测试
+  ```ts
+  it('Happy path', () => {
+    const origin = { foo: 1 };
+    const observed = readonly(origin);
+    console.warn = jest.fn();
+    expect(observed.foo).toBe(1); // 将原始对象包装为只读对象
+    expect(console.warn).not.toHaveBeenCalled(); // 最开始不报错
+    observed.foo = 2; // 修改, 静默失效, 报 warning
+    expect(console.warn).toBeCalledTimes(1); // warning 被调用一次
+    expect(observed.foo).toBe(1); // readOnly 静默失效
+  });
+  ```
+2. 实现
+  抽离 `[GET]` 与 `[SET]`
+  ```ts
+  // reactive 的 [GET]
+  function get(target, key, receiver) {
+    track(target, key);
+    return Reflect.get(target, key, receiver);
+  }
+
+  // reactive 的 [SET]
+  function set(target, key, value, receiver) {
+    const res = Reflect.set(target, key, value, receiver);
+    trigger(target, key);
+    return res;
+  }
+
+  function getReadonly(target, key, receiver) {
+    return Reflect.get(target, key, receiver);
+  }
+
+  function setReadonly(target, key, value, receiver) {
+    console.warn('Can not set readonly');
+    // 要返回一下设置结果, 如果返回 false 会抛出异常, 而我们只希望静默失效
+    return true;
+  }
+
+  export const proxyConfig = {
+    get,
+    set,
+  };
+
+  export const proxyReadonlyConfig = {
+    get: getReadonly,
+    set: setReadonly,
+  };
+  ```
+  抽离对象创建函数
+  ```ts
+  function createReactiveObject(origin, readonly = false) {
+    if (readonly) return new Proxy(origin, proxyReadonlyConfig);
+    return new Proxy(origin, proxyConfig);
+  }
+  ```
+  重写 `reactive` 构建 `readonly`
+  ```ts
+  export function reactive(origin) {
+    return createReactiveObject(origin);
+  }
+
+  export function readonly(origin) {
+    return createReactiveObject(origin, true);
+  }
+  ```
+3. 重构: 上面的就是重构后的代码
+
 ### 构建其他工具函数
+
+**需求**: 构建工具函数, `isReadonly`, `isReactive`.
+
+**需求分析**: 只需要在 `[GET]` 上特判即可
+
+1. 测试
+  ```ts
+  it('isReadonly test', () => {
+    const origin = { foo: 1 };
+    const observed = readonly(origin);
+    expect(isReadonly(observed)).toBe(true);
+    expect(isReactive(observed)).toBe(false);
+  });
+
+  it('isReactive test', () => {
+    const origin = { foo: 1 };
+    const observed = reactive(origin);
+    expect(isReadonly(observed)).toBe(false);
+    expect(isReactive(observed)).toBe(true);
+  });
+  ```
+2. 实现
+  构造个枚举
+  ```ts
+  export const enum ReactiveFlag {
+    IS_REACTIVE = '__v_isReactive',
+    IS_READONLY = '__v_isReadonly',
+  }
+  ```
+  实现函数
+  ```ts
+  export function isReactive(value) {
+    return value[ReactiveFlag.IS_REACTIVE];
+  }
+
+  export function isReadonly(value) {
+    return value[ReactiveFlag.IS_READONLY];
+  }
+  ```
+  修改 `[GET]`
+  ```ts
+  const reactiveFlags = {
+    [ReactiveFlag.IS_REACTIVE]: true,
+    [ReactiveFlag.IS_READONLY]: false,
+  };
+
+  const readonlyFlags = {
+    [ReactiveFlag.IS_REACTIVE]: false,
+    [ReactiveFlag.IS_READONLY]: true,
+  };
+
+  function get(target, key, receiver) {
+    if (Object.keys(reactiveFlags).find(d=>d===key)) return reactiveFlags[key];
+    // ...
+  }
+
+  function getReadonly(target, key, receiver) {
+    if (Object.keys(readonlyFlags).find(d=>d===key)) return readonlyFlags[key];
+    // ...
+  }
+  ```
+3. 重构: 无
+
