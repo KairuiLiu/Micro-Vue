@@ -14,11 +14,11 @@ export function readonly(origin) {
 }
 
 export function isReactive(value) {
-  return value[ReactiveFlag.IS_REACTIVE];
+  return !!value[ReactiveFlag.IS_REACTIVE];
 }
 
 export function isReadonly(value) {
-  return value[ReactiveFlag.IS_READONLY];
+  return !!value[ReactiveFlag.IS_READONLY];
 }
 
 function createReactiveObject(origin, readonly = false) {

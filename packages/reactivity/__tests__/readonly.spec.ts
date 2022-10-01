@@ -17,5 +17,7 @@ describe('Readonly test', () => {
     const observed = readonly(origin);
     expect(isReadonly(observed)).toBe(true);
     expect(isReactive(observed)).toBe(false);
+    expect(isReactive(origin)).toBe(false);
+    expect(isReactive(origin)).toBe(false);
   });
 });

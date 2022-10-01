@@ -15,5 +15,7 @@ describe('Reactive test', () => {
     const observed = reactive(origin);
     expect(isReadonly(observed)).toBe(false);
     expect(isReactive(observed)).toBe(true);
+    expect(isReactive(origin)).toBe(false);
+    expect(isReactive(origin)).toBe(false);
   });
 });

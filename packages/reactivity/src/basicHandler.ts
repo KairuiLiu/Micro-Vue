@@ -12,7 +12,8 @@ const readonlyFlags = {
 };
 
 function get(target, key, receiver) {
-  if (Object.keys(reactiveFlags).find(d=>d===key)) return reactiveFlags[key];
+  if (Object.keys(reactiveFlags).find((d) => d === key))
+    return reactiveFlags[key];
   track(target, key);
   return Reflect.get(target, key, receiver);
 }
@@ -24,7 +25,8 @@ function set(target, key, value, receiver) {
 }
 
 function getReadonly(target, key, receiver) {
-  if (Object.keys(readonlyFlags).find(d=>d===key)) return readonlyFlags[key];
+  if (Object.keys(readonlyFlags).find((d) => d === key))
+    return readonlyFlags[key];
   return Reflect.get(target, key, receiver);
 }
 

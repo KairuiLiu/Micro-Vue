@@ -20,13 +20,15 @@ class EffectReactive {
     this.onStop = options.onStop;
     this.deps = new Set();
     this.active = true;
-    activeEffect = this;
     this.run();
-    activeEffect = undefined;
   }
 
   run() {
-    this.fn();
+    if (!this.active) return this.fn();
+    activeEffect = this;
+    const res = this.fn();
+    activeEffect = undefined;
+    return res;
   }
 }
 

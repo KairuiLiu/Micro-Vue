@@ -73,6 +73,32 @@ describe('Effect test', () => {
     observed.foo = 2;
     expect(bar).toBe(-1);
     stop(runner);
+    observed.foo++;
     expect(bar).toBe(-1);
+    runner();
+    expect(bar).toBe(3);
+  });
+
+  it('dym track', () => {
+    const origin1 = { foo: 1 };
+    const observe1 = reactive(origin1);
+    const origin2 = { foo: 100 };
+    const observe2 = reactive(origin2);
+    let cnt = 0,
+      ob = 0;
+    const runner = effect(() => {
+      if (cnt == 0) {
+        ob = observe1.foo;
+      } else {
+        ob = observe2.foo;
+      }
+      cnt++;
+    });
+    expect(ob).toBe(1);
+    runner();
+    observe1.foo = 2;
+    expect(ob).toBe(100);
+    observe2.foo = 200;
+    expect(ob).toBe(200);
   });
 });
