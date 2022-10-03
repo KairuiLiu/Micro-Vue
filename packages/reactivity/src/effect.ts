@@ -3,7 +3,7 @@
 const targetMap: Map<any, Map<string, Set<EffectReactive>>> = new Map();
 let activeEffect: EffectReactive | undefined;
 
-class EffectReactive {
+export class EffectReactive {
   runner: {
     (...args: any[]): any;
     effect?: EffectReactive;
@@ -41,7 +41,12 @@ export function track(target, key) {
   if (!targetMap.has(target)) targetMap.set(target, new Map());
   const keyMap = targetMap.get(target)!;
   if (!keyMap.has(key)) keyMap.set(key, new Set());
-  const dependenceEffect = keyMap.get(key)!;
+  trackEffect(keyMap.get(key)!);
+}
+
+export function trackEffect(dependenceEffect) {
+  // 本来只需要在 track 上判断 activeEffect 但是这个函数可能被 track 或者 RefImpl 调用, 所以还需要在判断一次
+  if (!activeEffect) return;
   dependenceEffect.add(activeEffect);
   activeEffect.deps.add(dependenceEffect);
 }
@@ -51,6 +56,10 @@ export function trigger(target, key) {
   if (!keyMap) return;
   const depSet = keyMap.get(key)!;
   if (!depSet) return;
+  triggerEffect(depSet);
+}
+
+export function triggerEffect(depSet) {
   [...depSet].forEach((d) => (d.scheduler ? d.scheduler() : d.run()));
 }
 
