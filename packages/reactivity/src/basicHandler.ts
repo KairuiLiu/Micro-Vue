@@ -1,5 +1,6 @@
+import { isObject } from '../../share';
 import { track, trigger } from './effect';
-import { ReactiveFlag } from './reactive';
+import { reactive, ReactiveFlag, readonly } from './reactive';
 
 const reactiveFlags = {
   [ReactiveFlag.IS_REACTIVE]: true,
@@ -14,8 +15,10 @@ const readonlyFlags = {
 function get(target, key, receiver) {
   if (Object.keys(reactiveFlags).find((d) => d === key))
     return reactiveFlags[key];
+  const res = Reflect.get(target, key, receiver);
+  if (isObject(res)) return reactive(res);
   track(target, key);
-  return Reflect.get(target, key, receiver);
+  return res;
 }
 
 function set(target, key, value, receiver) {
@@ -27,6 +30,15 @@ function set(target, key, value, receiver) {
 function getReadonly(target, key, receiver) {
   if (Object.keys(readonlyFlags).find((d) => d === key))
     return readonlyFlags[key];
+  const res = Reflect.get(target, key, receiver);
+  if (isObject(res)) return readonly(res);
+  return res;
+}
+
+function getShadowReadonly(target, key, receiver) {
+  if (Object.keys(readonlyFlags).find((d) => d === key))
+    return readonlyFlags[key];
+  // 其实就是不支持嵌套追踪的 readonly
   return Reflect.get(target, key, receiver);
 }
 
@@ -43,5 +55,10 @@ export const proxyConfig = {
 
 export const proxyReadonlyConfig = {
   get: getReadonly,
+  set: setReadonly,
+};
+
+export const proxyShadowReadonlyConfig = {
+  get: getShadowReadonly,
   set: setReadonly,
 };

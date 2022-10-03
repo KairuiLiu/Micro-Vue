@@ -2,7 +2,7 @@
 
 import { reactive, effect, stop, readonly } from '../src/index';
 
-describe('reactivity/effect', () => {
+describe.skip('reactivity/effect', () => {
   it('should run the passed function once (wrapped by a effect)', () => {
     const fnSpy = jest.fn(() => {});
     effect(fnSpy);

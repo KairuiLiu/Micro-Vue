@@ -1,4 +1,4 @@
-import { isReactive, isReadonly, readonly } from '../src/reactive';
+import { isReactive, isReadonly, readonly, isProxy } from '../src/reactive';
 
 describe('Readonly test', () => {
   it('Happy path', () => {
@@ -19,5 +19,23 @@ describe('Readonly test', () => {
     expect(isReactive(observed)).toBe(false);
     expect(isReactive(origin)).toBe(false);
     expect(isReactive(origin)).toBe(false);
+  });
+
+  it('isProxy test', () => {
+    const origin = { foo: 1 };
+    const observed = readonly(origin);
+    expect(isProxy(observed)).toBe(true);
+  });
+
+  it('Should nested track', () => {
+    const origin = {
+      foo: { a: 1 },
+      bar: [{ b: 2 }],
+    };
+    const observe = readonly(origin);
+    expect(isReadonly(observe)).toBe(true);
+    expect(isReadonly(observe.foo)).toBe(true);
+    expect(isReadonly(observe.bar)).toBe(true);
+    expect(isReadonly(observe.bar[0])).toBe(true);
   });
 });

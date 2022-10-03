@@ -1,5 +1,5 @@
 import { effect, stop } from '../src/effect';
-import { reactive } from '../src/reactive';
+import { isReactive, reactive } from '../src/reactive';
 
 describe('Effect test', () => {
   it('Should sync', () => {
@@ -79,7 +79,7 @@ describe('Effect test', () => {
     expect(bar).toBe(3);
   });
 
-  it('dym track', () => {
+  it('Should dynamic track', () => {
     const origin1 = { foo: 1 };
     const observe1 = reactive(origin1);
     const origin2 = { foo: 100 };

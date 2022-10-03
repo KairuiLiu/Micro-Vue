@@ -1,4 +1,11 @@
-import { proxyConfig, proxyReadonlyConfig } from './basicHandler';
+import {
+  proxyConfig,
+  proxyReadonlyConfig,
+  proxyShadowReadonlyConfig,
+} from './basicHandler';
+const reactiveMap = new Map();
+const readonlyMap = new Map();
+const shadowReadonlyMap = new Map();
 
 export const enum ReactiveFlag {
   IS_REACTIVE = '__v_isReactive',
@@ -6,11 +13,21 @@ export const enum ReactiveFlag {
 }
 
 export function reactive(origin) {
-  return createReactiveObject(origin);
+  if (!reactiveMap.has(origin))
+    reactiveMap.set(origin, createReactiveObject(origin));
+  return reactiveMap.get(origin)!;
 }
 
 export function readonly(origin) {
-  return createReactiveObject(origin, true);
+  if (!readonlyMap.has(origin))
+    readonlyMap.set(origin, createReactiveObject(origin, true));
+  return readonlyMap.get(origin)!;
+}
+
+export function shadowReadonly(origin) {
+  if (!shadowReadonlyMap.has(origin))
+    shadowReadonlyMap.set(origin, createReactiveObject(origin, true, true));
+  return shadowReadonlyMap.get(origin)!;
 }
 
 export function isReactive(value) {
@@ -21,7 +38,12 @@ export function isReadonly(value) {
   return !!value[ReactiveFlag.IS_READONLY];
 }
 
-function createReactiveObject(origin, readonly = false) {
+export function isProxy(value) {
+  return isReactive(value) || isReadonly(value);
+}
+
+function createReactiveObject(origin, readonly = false, shadow = false) {
+  if (shadow && readonly) return new Proxy(origin, proxyShadowReadonlyConfig);
   if (readonly) return new Proxy(origin, proxyReadonlyConfig);
   return new Proxy(origin, proxyConfig);
 }
