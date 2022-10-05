@@ -1,6 +1,7 @@
 import { isObject } from '../../share';
 import { track, trigger } from './effect';
 import { reactive, ReactiveFlag, readonly } from './reactive';
+import { isRef, unRef } from './ref';
 
 const reactiveFlags = {
   [ReactiveFlag.IS_REACTIVE]: true,
@@ -48,6 +49,18 @@ function setReadonly(target, key, value, receiver) {
   return true;
 }
 
+function getProxyRef(target, key, receiver) {
+  // 不用这么麻烦
+  // if (isRef(target[key])) return target[key].value;
+  // return target[key];
+  return unRef(target[key]);
+}
+
+function setProxyRef(target, key, value, receiver) {
+  if (isRef(target[key]) && !isRef(value)) return (target[key].value = value);
+  return Reflect.set(target, key, value, receiver);
+}
+
 export const proxyConfig = {
   get,
   set,
@@ -61,4 +74,9 @@ export const proxyReadonlyConfig = {
 export const proxyShadowReadonlyConfig = {
   get: getShadowReadonly,
   set: setReadonly,
+};
+
+export const proxyProxyRefConfig = {
+  get: getProxyRef,
+  set: setProxyRef,
 };

@@ -1,3 +1,4 @@
+import { proxyProxyRefConfig } from './basicHandler';
 import { isObject } from '../../share';
 import { EffectReactive, trackEffect, triggerEffect } from './effect';
 import { reactive } from './reactive';
@@ -42,5 +43,9 @@ export function unRef(ref) {
 }
 
 export function isRef(value) {
-  return !!value.__v_isRef;
+  return !!value?.__v_isRef;
+}
+
+export function proxyRefs(origin) {
+  return new Proxy(origin, proxyProxyRefConfig);
 }

@@ -1,5 +1,5 @@
 import { effect } from '../src/effect';
-import { isRef, unRef, ref } from '../src/ref';
+import { isRef, unRef, ref, proxyRefs } from '../src/ref';
 import { reactive } from '../src/reactive';
 
 describe('ref', () => {
@@ -66,5 +66,24 @@ describe('ref', () => {
     expect(unRef(observed2)).not.toBe(origin2);
     expect(unRef(observed2)).toStrictEqual(origin2);
     expect(unRef(observed2)).toBe(reactive(origin2));
+  });
+
+  it('proxyRefs', () => {
+    const user = {
+      sampleRef: ref(10),
+      sampleStr: 'demo',
+    };
+    const proxyUser = proxyRefs(user);
+    expect(user.sampleRef.value).toBe(10);
+    expect(proxyUser.sampleRef).toBe(10);
+    expect(proxyUser.sampleStr).toBe('demo');
+
+    (proxyUser as any).sampleRef = 20;
+    expect(proxyUser.sampleRef).toBe(20);
+    expect(user.sampleRef.value).toBe(20);
+
+    proxyUser.sampleRef = ref(10);
+    expect(proxyUser.sampleRef).toBe(10);
+    expect(user.sampleRef.value).toBe(10);
   });
 });
