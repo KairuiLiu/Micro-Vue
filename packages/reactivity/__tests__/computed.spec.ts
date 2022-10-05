@@ -1,5 +1,4 @@
-import { reactive } from '../src/reactive';
-import { computed } from '../src/computed';
+import { reactive, computed, effect } from '../src';
 
 describe('Computed test', () => {
   it('should reactive', () => {
@@ -19,5 +18,17 @@ describe('Computed test', () => {
     expect(bar.value).toBe(3);
     expect(bar.value).toBe(3);
     expect(cnt).toBe(2);
+  });
+
+  it('should trigger effect', () => {
+    const value = reactive({});
+    const cValue = computed(() => value.foo);
+    let dummy;
+    effect(() => {
+      dummy = cValue.value;
+    });
+    expect(dummy).toBe(undefined);
+    value.foo = 1;
+    expect(dummy).toBe(1);
   });
 });

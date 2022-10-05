@@ -1,2 +1,11 @@
 export { effect, stop } from './effect';
-export { reactive, readonly, isReactive, isReadonly } from './reactive';
+export {
+  reactive,
+  readonly,
+  shadowReadonly,
+  isReactive,
+  isReadonly,
+  isProxy,
+} from './reactive';
+export { computed } from './computed';
+export { ref, unRef, isRef, proxyRefs } from './ref';

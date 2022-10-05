@@ -1,27 +1,38 @@
-import { effect } from './effect';
+import {
+  effect,
+  EffectReactive,
+  trackEffect,
+  triggerEffect,
+} from './effect';
 
 class ComputedImpl {
   old: boolean;
   fst: boolean;
   _value: any;
-  runner: () => any;
+  dep: Set<EffectReactive>;
+  effect!: EffectReactive;
 
   constructor(public fn) {
     this.old = false;
     this.fst = true;
-    this.runner = () => undefined;
+    this.dep = new Set();
   }
 
   get value() {
+    trackEffect(this.dep);
     if (this.fst) {
       this.fst = false;
-      this.runner = effect(() => (this._value = this.fn()), {
-        scheduler: () => (this.old = true),
+      this.effect = new EffectReactive(() => (this._value = this.fn()), {
+        scheduler: () => {
+          this.old = true;
+          triggerEffect(this.dep);
+        },
       });
     }
     if (this.old) {
       this.old = false;
-      this._value = this.runner();
+      this._value = this.effect.runner();
+      triggerEffect(this.dep);
     }
     return this._value;
   }
