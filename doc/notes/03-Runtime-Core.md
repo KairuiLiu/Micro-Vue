@@ -420,3 +420,66 @@ export function setupRenderEffect(render, container) {
     instance.vNode.el = container;
   }
   ```
+
+### 实现 `shapeFlags`
+
+可以将组件类型判断抽出为一个变量, 通过位运算判断组件类型. 我们目前需要判断的有:
+
+- 是否是 `Element`
+- 是否是有 `setup` 的组件(也叫 stateful component)
+- 子节点是 string 还是数组
+
+实现
+
+- 修改 `vNode` 定义
+  ```ts
+  export function createVNode(component, props = {}, children = []) {
+    return {
+      shapeFlags: getShapeFlags(component, children),
+      // ...
+    };
+  }
+  ```
+- 判断函数
+  ```ts
+  import { isObject } from '../../share/index';
+
+  export const enum ShapeFlags {
+    ELEMENT = 1 << 0,
+    STATEFUL_COMPONENT = 1 << 1,
+    TEXT_CHILDREN = 1 << 2,
+    ARRAY_CHILDREN = 1 << 3,
+  }
+
+  export function getShapeFlags(type, children) {
+    let res = 0;
+    // 注意, 这俩不是互斥的...
+    if (!isObject(type)) res |= ShapeFlags.ELEMENT;
+    else if (type.setup) res |= ShapeFlags.STATEFUL_COMPONENT;
+    if (isObject(children)) res |= ShapeFlags.ARRAY_CHILDREN;
+    else res |= ShapeFlags.TEXT_CHILDREN;
+    return res;
+  }
+  ```
+- 同步判断
+  ```ts
+  function setupStatefulComponent(instance) {
+    if (instance.vNode.shapeFlags & ShapeFlags.STATEFUL_COMPONENT)
+    // ...
+  }
+
+  function mountElement(vNode, container) {
+    const el = document.createElement(vNode.type) as HTMLElement;
+    Object.keys(vNode.props).forEach((k) => el.setAttribute(k, vNode.props[k]));
+    if (vNode.shapeFlags & ShapeFlags.ARRAY_CHILDREN) {
+      // ...
+    }
+    // ...
+  }
+
+  export function patch(vNode1, vNode2, container) {
+    if (vNode2.shapeFlags & ShapeFlags.ELEMENT)
+      processElement(vNode1, vNode2, container);
+    // ...
+  }
+  ```

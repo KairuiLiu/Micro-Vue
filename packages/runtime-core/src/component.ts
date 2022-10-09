@@ -2,6 +2,7 @@ import { publicInstanceProxy } from './publicInstanceProxy';
 import { proxyRefs } from '../../index';
 import { isFunction } from '../../share/index';
 import { patch } from './render';
+import { ShapeFlags } from './shapeFlags';
 
 export function createComponent(vNode) {
   return {
@@ -21,16 +22,14 @@ export function setupComponent(instance) {
 }
 
 function setupStatefulComponent(instance) {
-  if (instance.type.setup)
+  if (instance.vNode.shapeFlags & ShapeFlags.STATEFUL_COMPONENT)
     handleSetupResult(instance, instance.type.setup.call(instance));
   finishComponentSetup(instance);
 }
 
 function handleSetupResult(instance, res) {
   if (isFunction(res)) instance.render = res;
-  else {
-    instance.setupResult = proxyRefs(res);
-  }
+  else instance.setupResult = proxyRefs(res);
   finishComponentSetup(instance);
 }
 
