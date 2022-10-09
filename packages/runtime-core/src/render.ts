@@ -37,7 +37,14 @@ function updateElement(vNode1, vNode2, container) {}
 
 function mountElement(vNode, container) {
   const el = document.createElement(vNode.type) as HTMLElement;
-  Object.keys(vNode.props).forEach((k) => el.setAttribute(k, vNode.props[k]));
+  Object.keys(vNode.props).forEach((k) => {
+    if (/^on[A-Z]/.test(k))
+      el.addEventListener(
+        k.replace(/^on([A-Z].*)/, (_, e) => e[0].toLowerCase() + e.slice(1)),
+        vNode.props[k]
+      );
+    else el.setAttribute(k, vNode.props[k]);
+  });
   if (vNode.shapeFlags & ShapeFlags.ARRAY_CHILDREN) {
     vNode.children.forEach((d) => {
       patch(null, d, el);

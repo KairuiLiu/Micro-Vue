@@ -529,3 +529,132 @@ export function setupRenderEffect(render, container) {
     // ...
   }
   ```
+
+### 实现事件注册
+
+我们可以为 Element 传入 attribute, 但是无法传入绑定事件, 例如传入 `{ onClick: ()=>{} }` 在渲染到 DOM 时可以发现渲染结果为
+
+```js
+<div onclick="()=>{}"></div>
+```
+
+- `onClick` 的小驼峰命名没了
+- value 应该是一个函数调用, 而这里只写了一个函数, 这样点击时候并不会执行函数只会右查询一下这个函数
+
+所以我们要手动实现这样的功能: 在挂载 Element 时, 若传入的是事件, 手动绑定这个事件
+
+```ts
+function mountElement(vNode, container) {
+  const el = document.createElement(vNode.type) as HTMLElement;
+  Object.keys(vNode.props).forEach((k) => {
+    // 通过正则判断是否为事件绑定
+    if (/^on[A-Z]/.test(k))
+      el.addEventListener(
+        k.replace(/^on([A-Z].*)/, (_, e) => e[0].toLowerCase() + e.slice(1)),
+        vNode.props[k]
+      );
+    else el.setAttribute(k, vNode.props[k]);
+  });
+  // ...
+}
+```
+
+### 实现 `props`
+
+**需求:**
+
+1. 将 props 输入 `setup`, 使得可以在 `setup` 中通过 `props.属性名` 调用, 同时 `props` 为 shadowReadonly
+2. 在 `render` 可以通过 `this.属性名` 调用
+
+**实现:**
+
+- 在 setup 时构造
+
+  ```ts
+  export function setupComponent(instance) {
+    // ...
+    initProps(instance);
+    // ...
+  }
+  ```
+
+- 通过第二点我们就知道我们需要将 props 加入 componentPublicProxy
+
+  ```ts
+  export const publicInstanceProxy = {
+    get(target, key, receiver) {
+      // ...
+      if (key in target.instance.props) return target.instance.props[key];
+    	// ...
+    },
+  };
+  ```
+
+- 参考 Vue 的API, 对于第一点需求我们只需要修改 `handleSetupResult` 的调用, 传入时加入 shadowReadonly
+
+  ```ts
+  handleSetupResult( instance,
+        instance.type.setup.call(instance, shadowReadonly(instance.props)})
+  );
+  ```
+
+  为 setup 传入参数即可
+
+  ```ts
+  setup(props, { emit }) {
+      props.foo++; // warn: readonly value
+  }
+  ```
+
+- 我们为啥不把 shadowReadonly 写入 componentPublicProxy 呢? 这样岂不是可以保护 `render` 中调用不会修改原值? 没有必要, 我们只需要保证浅层 readOnly, 而 render 是直接拿属性名的, 不会修改 props 上的属性定义.
+
+### 实现 `Emits`
+
+**需求:**
+
+通过 props 传入一堆 `onXxxXxx` 函数在 `setup` 中可以通过 `emit(xxxXxx)` 调用函数. 其中`emit` 通过 `setup(props, {emit})` 的方式传入.
+
+**注意, 这里就是差一个 `on`**. 你说为啥他妈的你要差个 `on` 啊, 我写 Vue 的时候也没有差异啊, 这个应该是 vue-loader 为传入的 `emit` 名加上的 (如: `<comp v-on:doSth='xxx'>`, 可能会被 vue-loader 转为 `{ onDoSth: xxx }`)
+
+**那么, 难道 `props` 上的 `onDoSth` 不会被注册成事件监听吗?** 怎么会, 我们的事件监听是为 Element 绑定的!
+
+**实现:**
+
+- 实现 emit 函数
+
+  ```ts
+  export function emit(instance, event, ...args) {
+    let eventName = event;
+    if (/-([a-z])/.test(eventName)) // 如果是 xxx-xxx 命名法, 将其转换为小驼峰
+      eventName = eventName.replace(/-([a-z])/, (_, lc) => lc.toUpperCase());
+    if (/[a-z].*/.test(eventName)) // 如果是小驼峰命名法, 将其转换为大驼峰
+      eventName = eventName[0].toUpperCase() + eventName.slice(1);
+    eventName = 'on' + eventName; // 加入 on
+    instance.vNode.props[eventName] && instance.vNode.props[eventName](args);
+  }
+  ```
+
+- 将函数加入实例对象 `$emit`
+
+  ```ts
+  const specialInstanceKeyMap = {
+    $el: (instance) => instance.vNode.el,
+    $emit: (instance) => emit.bind(null, instance),
+  };
+
+  export const publicInstanceProxy = {/*...*/};
+  ```
+
+  这里有个比较绕的点, Vue 要求 `emit` 调用方法为 `emit(名字, 函数调用参数)`, 我们这边多了一个 `instance`, 所以我们在定义 `$emit` 时为函数 bind 第一个参数
+
+- 传入 `setup` 的调用参数
+
+  ```ts
+  handleSetupResult(
+      instance,
+      instance.type.setup.call(instance, shadowReadonly(instance.props), {
+          emit: instance.proxy.$emit,
+      })
+  );
+  ```
+
