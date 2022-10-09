@@ -1,4 +1,4 @@
-import { publicInstanceProxy } from './publicInstanceProxy';
+import { publicInstanceProxy } from './componentPublicInstance';
 import { proxyRefs } from '../../index';
 import { isFunction } from '../../share/index';
 import { patch } from './render';

@@ -1,5 +1,14 @@
 import { h, ref } from '../../lib/micro-vue.esm.js';
 
+const HelloWorld = {
+  setup() {
+    return {};
+  },
+  render() {
+    return h('span', {}, 'HWD');
+  },
+};
+
 export default {
   setup() {
     return {
@@ -7,6 +16,9 @@ export default {
     };
   },
   render() {
-    return h('div', { class: 'title' }, 'hi' + this.message);
+    return h('div', { class: 'title' }, [
+      h('span', {}, 'APP'),
+      h(HelloWorld, {}, [h('span', {}, '不会渲染')]),
+    ]);
   },
 };

@@ -98,7 +98,35 @@ SFC 需要 vue-loader 编译才能实现. 而 vue-loader 的作用是将 SFC 处
 - `render` 中的 `h` 用于表述一个组件/元素, 语法为: `h(type, attr, children)`.
   - `type`: 描述元素或组件类型, 如果希望将目标渲染为 Element 那么 `type` 为标签名, 如果希望渲染为组件那么 `type` 为 组件配置对象
   - `attr`: 描述元素或组件上的属性(例如: `class`)
-  - `children`: 如果这个元素或组件下面没有子元素或者子组件, 那么 `children` 为元素的 `innerText`, 如果下面还有子组件, 那么 `children` 应该是一个 `h` 函数返回值数组
+  - `children`:
+    - 如果待渲染的是一个元素, 如果这个元素下面没有子元素或者子组件, 那么 `children` 为元素的 `innerText`, 如果下面还有子组件或子元素, 那么 `children` 应该是一个 `h` 函数返回值数组
+    - **如果待渲染的是一个组件, `children` 属性将传入插槽而不是子元素, 这一点与模板设计是类似的**
+      ```html
+      <template>
+        <div>
+          <span>111</span>
+          <span>222</span>
+        </div>
+      </template>
+      ```
+      的 `h` 函数
+      ```js
+      h('div', {}, [h('span', {}, '111'), h('span', {}, '222')])
+      ```
+      对于组件
+      ```html
+      <template>
+        <Comp>
+          <span>111</span>
+          <span>222</span>
+        </Comp>
+      </template>
+      ```
+      的 `h` 函数
+      ```js
+      h(Comp, {}, [h('span', {}, '111'), h('span', {}, '222')])
+      ```
+      设计上是统一的.
 
 上面这个例子描述了这样一个组件:
 
@@ -110,7 +138,8 @@ SFC 需要 vue-loader 编译才能实现. 而 vue-loader 的作用是将 SFC 处
 
   - **诶, 那我们在哪里定义了 App 的 h 函数呢?** 我们没有用 `h` 函数定义 App (是利用 createApp 定义的) 至于这俩函数有什么联系后面再说
 
-  - **诶, 那难道 App 组件内部只能有一个一级子元素?** 对于 App 下的某个组件(如 demo), 我们让这个组件有多个子元素
+  - **诶, 那难道组件内部只能有一个一级子元素?** 是的, 在 Vue2 中我们就规定 `template` 下最多只能有一个一级子元素, 在 Vue3 中我们用语法糖解除了这个限制.
+  你可能会想到对于 App 下的某个组件(如 demo), 我们通过这样的方式让这个组件有多个子元素
 
     ```js
     // App.js 的 render
@@ -122,7 +151,24 @@ SFC 需要 vue-loader 编译才能实现. 而 vue-loader 的作用是将 SFC 处
     }
     ```
 
-    但是我们没法让 App 组件里面包含多个子元素诶! 因为构造 App 的 `h` 函数不在我们手里. Vue 本身也是这么规定的, 根组件不能包含多个子元素. 就像在 Linux 中你不能构造一个与根目录同级的目录!
+    这是错的, 数组将作为插槽传入 demo 组件, 组件的子元素是在组件自己的 `render` 中定义的.
+
+    ```js
+
+    demoConfig = {
+      render(){
+        return h('div', {}, [
+            h('span', {}, "111"),
+            h('span', {}, "222"),
+        ])
+      }
+    }
+
+    // App.js 的 render
+    render() {
+        return h(demoConfig, { class: 'title' });
+    }
+    ```
 
     其实我们的疑问就是到底是他妈的谁构造了根组件 `App` 的 `h` 函数
 
