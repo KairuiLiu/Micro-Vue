@@ -3,5 +3,6 @@ export function createVNode(component, props = {}, children = []) {
     type: component,
     props,
     children,
+    el: null,
   };
 }

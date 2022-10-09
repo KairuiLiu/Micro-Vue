@@ -225,7 +225,7 @@ Vue 的实现就比较流畅. 既然我 `effect` 要立即执行一遍函数, �
 
 6. `createApp` 方法接受根组件配置对象 `App` 直接包了个对象, 有
 
-   - `_componment = App`
+   - `_component = App`
    - `mount` 方法, 看语义, 这个方法接收挂载点, 将根组件创建为 `VNode` 并挂载到挂载点(`main.js` 中的 `rootContainer`), 执行完后 `main.js` 就结束了
 
    我们需要继续分析的就是 `VNode` 的创建过程与 `render` 的挂载过程

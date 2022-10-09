@@ -1,11 +1,12 @@
-import { h } from '../../lib/micro-vue.esm.js';
+import { h, ref } from '../../lib/micro-vue.esm.js';
 
 export default {
-  setup() {},
+  setup() {
+    return {
+      message: ref('micro-vue'),
+    };
+  },
   render() {
-    return h('div', { class: 'title' }, [
-      h('span', {class: 'left'}, "111"),
-      h('span', {class: 'right'}, "222"),
-    ]);
+    return h('div', { class: 'title' }, 'hi' + this.message);
   },
 };

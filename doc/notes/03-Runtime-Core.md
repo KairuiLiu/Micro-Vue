@@ -236,7 +236,7 @@ SFC 需要 vue-loader 编译才能实现. 而 vue-loader 的作用是将 SFC 处
 - `createComponent` 用于创建组件实例, 为了方便我们将组件的 type 提到实例上
 
   ```js
-  // @packages/runtime-core/src/componment.ts
+  // @packages/runtime-core/src/component.ts
   export function createComponent(vNode) {
     return {
       vNode,
@@ -252,7 +252,7 @@ SFC 需要 vue-loader 编译才能实现. 而 vue-loader 的作用是将 SFC 处
   - 如果没 `render` 就从 `vNode` 的 `type` 上读取 `render`
 
   ```js
-  // @packages/runtime-core/src/componment.ts
+  // @packages/runtime-core/src/component.ts
   export function setupComponent(instance) {
     // initProp
     // initSlot
@@ -285,7 +285,7 @@ SFC 需要 vue-loader 编译才能实现. 而 vue-loader 的作用是将 SFC 处
 - 构建 `instance` 之后需要将中的子元素挂载出去, 递归 `patch` 即可
 
   ```js
-  // @packages/runtime-core/src/componment.ts
+  // @packages/runtime-core/src/component.ts
   export function setupRenderEffect(render, container) {
     const subTree = render(); // render 只能返回 h 函数的结果, 所以一定是一个 vNode, 直接 patch 就行
     // !
@@ -327,4 +327,96 @@ SFC 需要 vue-loader 编译才能实现. 而 vue-loader 的作用是将 SFC 处
   // @packages/runtime-core/src/h.ts
   import { createVNode } from "./vnode";
   export const h = createVNode
+  ```
+
+### 实现组件实例 `Proxy`
+
+我们想要让组件可以引用自己导出的变量
+
+```js
+export default {
+  setup() {
+    return {
+      message: ref('micro-vue'),
+    };
+  },
+  render() {
+    return h('div', { class: 'title' }, 'hi ' + this.message);
+  },
+};
+```
+
+但是因为我们直接调用了 `render` 函数
+
+```js
+// @packages/runtime-core/src/component.ts
+export function setupRenderEffect(render, container) {
+  const subTree = render();
+  // ...
+}
+```
+
+所以 `render` 的 `this` 是 `global`, 我们希望 `render` 的 `this` 包括 `setup` 导出的对象与 Vue 3 文档中的[组件实例](https://cn.vuejs.org/api/component-instance.html), 所以我们需要构造一个 Proxy 同时实现访问 setup 结果与组件对象
+
+1. 处理 setup 导出
+
+  ```ts
+  // @packages/runtime-core/src/component.ts
+  function handleSetupResult(instance, res) {
+    // ...
+    instance.setupResult = proxyRefs(res);
+    // ...
+  }
+  ```
+
+2. 在结束组件初始化时构造代理对象, 将代理对象作为一个属性插入实例
+  ```ts
+  // @packages/runtime-core/src/component.ts
+  function finishComponentSetup(instance) {
+    // 声明代理对象
+    instance.proxy = new Proxy({ instance }, publicInstanceProxy);
+    instance.render = instance.render || instance.type.render;
+  }
+  ```
+  将 `target` 定义为 `{ instance }` 看起来很怪, 为啥不直接用 `instance` 呢? 因为在 DEV 模式下这个对象内部应该还有很多属性, 只不过我们没有考虑
+3. 定义代理
+  ```ts
+  // @packages/runtime-core/src/publicInstanceProxy.ts
+  const specialInstanceKeyMap = {
+    $el: (instance) => instance.vNode.el,
+  };
+
+  export const publicInstanceProxy = {
+    get(target, key, receiver) {
+      // 如果 setup 导出的对象上有就返回
+      if (Reflect.has(target.instance.setupResult, key))
+        return Reflect.get(target.instance.setupResult, key);
+      // 从组件属性上导出属性
+      if (key in specialInstanceKeyMap)
+        return specialInstanceKeyMap[key](target.instance);
+      return target.instance[key];
+    },
+  };
+  ```
+4. 实现 `$el`
+
+  有很多组件实例, 我们暂时只实现 `$el`. 挂载点应该是 `vNode` 的属性, 所以我们将挂载点记录在 `vNode` 上
+
+  ```ts
+  // @packages/runtime-core/src/vnode.ts
+  export function createVNode(component, props = {}, children = []) {
+    return {
+      // ...
+      el: null,
+    };
+  }
+  ```
+  `el` 作为组件实例在组件挂载后在 vNode 上更新即可
+
+  ```ts
+  // @packages/runtime-core/src/publicInstanceProxy.ts
+  export function setupRenderEffect(instance, container) {
+    // ...
+    instance.vNode.el = container;
+  }
   ```

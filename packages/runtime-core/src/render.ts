@@ -3,7 +3,7 @@ import {
   createComponent,
   setupComponent,
   setupRenderEffect,
-} from './componment';
+} from './component';
 
 export function render(vNode, container) {
   patch(null, vNode, container); // 第一次创建没有老元素
@@ -24,7 +24,7 @@ function updateComponent(vNode1, vNode2, container) {}
 function mountComponent(vNode, container) {
   const instance = createComponent(vNode);
   setupComponent(instance);
-  setupRenderEffect(instance.render, container);
+  setupRenderEffect(instance, container);
 }
 
 function processElement(vNode1, vNode2, container) {
