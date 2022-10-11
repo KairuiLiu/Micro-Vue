@@ -10,5 +10,5 @@ export function renderSlots(slots, name = 'default', ...args) {
   let rSlots = name in slots ? slots[name] : [];
   rSlots = isObject(rSlots) ? rSlots : rSlots(...args);
   rSlots = testAndTransArray(rSlots);
-  return h(typeSymbol.FragmentNodeNode, {}, rSlots);
+  return h(typeSymbol.FragmentNode, {}, rSlots);
 }

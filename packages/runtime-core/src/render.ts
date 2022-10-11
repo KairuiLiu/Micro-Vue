@@ -12,7 +12,7 @@ export function render(vNode, container) {
 
 export function patch(vNode1, vNode2, container) {
   switch (vNode2.type) {
-    case typeSymbol.FragmentNodeNode:
+    case typeSymbol.FragmentNode:
       processFragmentNode(vNode1, vNode2, container);
       break;
     case typeSymbol.TextNode:

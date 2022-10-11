@@ -1,7 +1,7 @@
 import { getShapeFlags } from './shapeFlags';
 
 export const typeSymbol = {
-  FragmentNodeNode: Symbol('FragmentNodeNode'),
+  FragmentNode: Symbol('FragmentNode'),
   TextNode: Symbol('TextNode'),
 };
 

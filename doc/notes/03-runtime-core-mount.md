@@ -1,4 +1,4 @@
-## 实现 runtime-core
+## 实现 runtime-core 的 mount 部分
 
 ### 搭建环境
 
@@ -657,4 +657,316 @@ function mountElement(vNode, container) {
       })
   );
   ```
+
+### 实现 `slot`
+
+之前已经梳理过组件的 children 存储的是 slot. Vue 有三种 slot
+
+- 默认 slot: 直接作为子元素写入, 在子组件中会按顺序写入
+- 具名 slot: 指定元素插入什么地方
+- 作用域 slot: 为具名 slot 传入参数
+
+先考虑组件的 children 应该传入什么样的数据类型 (`h(comp, {}, children)`)
+
+- 如果只支持默认 slot, 我们大可将数组传入 children 并将 render 函数写成下面这样
+
+    ```ts
+    const HelloWorld = {
+      render() {
+        // 假设 $slot 表示父组件传入的插槽数组, 让子组件在渲染时直接解构上去
+        return h('div', {}, [h('span', {}, this.foo), ...$slot]);
+      },
+    };
+
+    export default {
+      render() {
+        return h('div', { class: 'title' }, [
+          h('span', {}, 'APP'),
+          h(HelloWorld, { foo: 'hi' }, [
+            h('div', {}, 'IM LEFT'),
+            h('div', {}, 'IM RIGHT'),
+          ]),
+        ]);
+      },
+    };
+```
+
+- 如果需要支持具名插槽, 我们可以传入数组, 并在每个元素上打上 `name`. 但是这样每次放入元素都需要 $O(n)$ 查找. 可以考虑将传入的 `children` 做成对象, Key 为具名插槽名字, Value 可以是 vNode 数组也可以是 vNode.
+
+  ```ts
+  import { h, ref, renderSlots } from '../../lib/micro-vue.esm.js';
+
+  const HelloWorld = {
+    render() {
+      return h('div', {}, [
+        // 由于 this.$slots[key] 不知道是数组还是对象, 我们用一个函数辅助处理
+        renderSlots(this.$slots, 'left'),
+        h('span', {}, this.foo),
+        renderSlots(this.$slots, 'right'),
+        h('span', {}, 'OK'),
+        renderSlots(this.$slots), // 调用默认插槽
+      ]);
+    },
+  };
+
+  export default {
+    render() {
+      return h('div', { class: 'title' }, [
+        h('span', {}, 'APP'),
+        h(HelloWorld, { foo: 'hi' }, {
+          left: h('div', {}, 'IM LEFT'), // left 插槽
+          right: h('div', {}, 'IM RIGHT'), // right 插槽
+          default: [h('div', {}, 'IM D1'),h('div', {}, 'IM D2')] // 默认插槽
+        }),
+      ]);
+    },
+  };
+  ```
+
+  这里 Vue 引入了 `renderSlots` 函数, 我以为其作用就是找到插槽并转换为数组, 就像下面这样
+
+  ```ts
+  function renderSlots(slots, key = 'default') {
+    let rSlots = slots[key] ? slots[key] : [];
+    return isObject(slots[key]) ? [rSlots] : rSlots;
+  }
+  ```
+
+  但是实际上这个函数的返回值是一个 vNode, Vue 会直接将一个或多个 vNode 打包成一个 vNode 返回从而规避数组解构
+
+  ```ts
+  // @packages/runtime-core/src/componentSlots.ts
+  function renderSlots(slots, name = 'default') {
+      let rSlots = name in slots ? slots[name] : [];
+      rSlots = testAndTransArray(rSlots);
+      return h('div', {}, rSlots);
+  }
+  ```
+
+  不知道为什么要这么做😟
+
+- 继续考虑作用域插槽, 为了实现作用域变量传递, 我们需要将插槽定义为函数, 并在调用 `renderSolts` 时传入参数
+
+  ```js
+  const HelloWorld = {
+    render() {
+      return h('div', {}, [
+        renderSlots(this.$slots, 'left'),
+        h('span', {}, this.foo),
+        renderSlots(this.$slots, 'right', 'wuhu'), // 作用域 slot 传入参数
+        h('span', {}, 'OK'),
+        renderSlots(this.$slots, 'default', 'wula'),
+      ]);
+    },
+  };
+
+  export default {
+    render() {
+      return h('div', { class: 'title' }, [
+        h('span', {}, 'APP'),
+        h(
+          HelloWorld,
+          { foo: 'hi' },
+          {
+            left: () => h('div', {}, 'IM LEFT'),
+            right: (foo) => h('div', {}, foo),
+            default: (foo) => [h('div', {}, 'IM ' + foo), h('div', {}, 'IM D2')],
+          }
+        ),
+      ]);
+    },
+  };
+  ```
+
+  只需要在 `renderSlots` 中判断 value 是对象还是函数并分类讨论即可.
+
+  ```ts
+  // @packages/runtime-core/src/componentSlots.ts
+  function renderSlots(slots, name = 'default', ...args) {
+      let rSlots = name in slots ? slots[name] : []; // 防止给无效 Key
+      // 如果是对象 / 数组就不管, 函数就调用
+      rSlots = isObject(rSlots) ? rSlots : rSlots(...args);
+      // 尝试转为数组
+      rSlots = testAndTransArray(rSlots);
+      return h(typeSymbol.FragmentNode, {}, rSlots);
+  }
+
+  // @packages/share/index.ts
+  export function testAndTransArray(v) {
+    return Array.isArray(v) ? v : [v];
+  }
+  ```
+
+至此, 我们实现了插槽的渲染, 再实现一些外围方法
+
+- 实现 `initSlot`
+
+  ```ts
+  // @packages/runtime-core/src/componentSlots.ts
+  export function initSlot(instance) {
+    instance.slots = instance.vNode.children || {};
+  }
+  ```
+
+- 添加 `$slot` 定义
+
+  ```ts
+  // @packages/runtime-core/src/componentPublicInstance.ts
+  const specialInstanceKeyMap = {
+    $el: (instance) => instance.vNode.el,
+    $emit: (instance) => emit.bind(null, instance),
+    $slots: (instance) => instance.slots,
+  };
+  ```
+
+### 实现 `FragmentNode`
+
+在实现 `renderSolts` 时我们为将多个 vNode 打包成一个 vNode 采用 `h('div', {}, rSlots)` 将多个插槽放入了一个 `div` 下. 然而我们希望在 HTML 中不现实这个多余的 `div`, 此时就需要 `Fragment` 标签, 它相当于 Vue 插槽中的 `<template></template>` 标签, 永不会被渲染. 其实现的原理就是在 mount 时不挂载父节点, 直接将子节点挂载到 container 上
+
+- 先用 Symbol 定义标签名
+
+  ```ts
+  // @packages/runtime-core/src/vnode.ts
+  export const typeSymbol = {
+    FragmentNode: Symbol('FragmentNode'),
+  };
+  ```
+
+- 在 `patch` 时特判 `Fragment` (因为 `Fragment` 与 component, Element 判断条件不同, 我们没法把他们放入用三个 `case` 中)
+
+  ```ts
+  // @packages/runtime-core/src/render.ts
+  export function patch(vNode1, vNode2, container) {
+    switch (vNode2.type) {
+      case typeSymbol.FragmentNode:
+        processFragmentNode(vNode1, vNode2, container); // 特判 Fragment
+        break;
+      default:
+        if (vNode2.shapeFlags & ShapeFlags.ELEMENT)
+          processElement(vNode1, vNode2, container);
+        else processComponent(vNode1, vNode2, container);
+    }
+  }
+
+  function processFragmentNode(vNode1, vNode2, container) {
+    if (vNode1) return;
+    return mountFragmentNode(vNode2, container);
+  }
+
+  function mountFragmentNode(vNode, container) {
+    // 不挂载父节点直接将子节点挂载到 container 上
+    vNode.children.forEach((d) => patch(null, d, container));
+  }
+  ```
+
+- 修改 `renderSlots`
+
+  ```ts
+  // @packages/runtime-core/src/componentSlots.ts
+  export function renderSlots(slots, name = 'default', ...args) {
+    let rSlots = name in slots ? slots[name](...args) : [];
+    rSlots = testAndTransArray(rSlots);
+    return h(typeSymbol.FragmentNode, {}, rSlots);
+    //       ^ 小改一下
+  }
+  ```
+
+### 实现 `TextNode`
+
+我们还希望在 HTML 中不使用 `span` 就写入文字, 就像
+
+```html
+<div>
+  <span>我想写 span 就写 span</span>
+  想直接写就直接写
+</div>
+```
+
+除非使用 `FragmentNode` 我们无法不渲染一段内容的标签, 但是 `FragmentNode` 标签的 `children` 也必须是 vNode, 所以我们还需要定义一个特殊标签, 它本身会渲染为 TextNode
+
+- 定义类型
+
+  ```ts
+  // @packages/runtime-core/src/vnode.ts
+  export const typeSymbol = {
+    FragmentNode: Symbol('FragmentNode'),
+    TextNode: Symbol('TextNode'),
+  };
+  ```
+
+- 特判类型
+
+  ```ts
+  // @packages/runtime-core/src/render.ts
+  export function patch(vNode1, vNode2, container) {
+    switch (vNode2.type) {
+      case typeSymbol.FragmentNode:
+        processFragmentNode(vNode1, vNode2, container);
+        break;
+      case typeSymbol.TextNode: // 特判 TextNode
+        processTextNode(vNode1, vNode2, container);
+        break;
+      default:
+        if (vNode2.shapeFlags & ShapeFlags.ELEMENT)
+          processElement(vNode1, vNode2, container);
+        else processComponent(vNode1, vNode2, container);
+    }
+  }
+
+  function processTextNode(vNode1, vNode2, container) {
+    if (vNode1) return;
+    return mountTextNode(vNode2, container);
+  }
+
+  function mountTextNode(vNode, container) {
+    const elem = document.createTextNode(vNode.children); // 通过 createTextNode 创建
+    container.appendChild(elem);
+  }
+  ```
+
+- 向外部暴露接口
+
+  ```ts
+  // @packages/runtime-core/src/vnode.ts
+  export function createTextVNode(text) {
+    return createVNode(typeSymbol.TextNode, {}, text);
+  }
+  ```
+
+- 使用
+
+  ```ts
+  render() {
+      return h('div', { class: 'title' }, [
+          createTextVNode('im text'),
+      ]);
+  },
+  ```
+
+### 实现工具函数 `getCurrentInstance`
+
+该函数用于在 setup 中获取当前 setup 所在的 instance. 只须在全局变量上打个标记就可以实现
+
+```ts
+// @packages/runtime-core/src/component.ts
+let currentInstance = undefined;
+
+function setupStatefulComponent(instance) {
+  if (instance.vNode.shapeFlags & ShapeFlags.STATEFUL_COMPONENT) {
+    currentInstance = instance; // 打个标记再执行
+    handleSetupResult(
+      instance,
+      instance.type.setup(shadowReadonly(instance.props), {
+        emit: instance.proxy.$emit,
+      })
+    );
+    currentInstance = undefined; // 删除标记
+  }
+  finishComponentSetup(instance);
+}
+
+export function getCurrentInstance() {
+  return currentInstance;
+}
+```
 
