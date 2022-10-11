@@ -1,4 +1,9 @@
-import { h, ref, renderSlots, typeSymbol } from '../../lib/micro-vue.esm.js';
+import {
+  createTextVNode,
+  h,
+  ref,
+  renderSlots,
+} from '../../lib/micro-vue.esm.js';
 
 const HelloWorld = {
   setup(props, { emit }) {},
@@ -22,7 +27,7 @@ export default {
   render() {
     return h('div', { class: 'title' }, [
       h('span', {}, 'APP'),
-      h(typeSymbol.TextNode, {}, 'heihei'),
+      createTextVNode('im text'),
       h(
         HelloWorld,
         { foo: 'hi' },

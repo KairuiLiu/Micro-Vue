@@ -13,6 +13,7 @@ export function createComponent(vNode) {
     render: null,
     setupResult: {},
     proxy: null,
+    slots: {},
   };
 }
 

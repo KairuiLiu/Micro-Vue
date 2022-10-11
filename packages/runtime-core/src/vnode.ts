@@ -14,3 +14,7 @@ export function createVNode(component, props = {}, children = []) {
     el: null,
   };
 }
+
+export function createTextVNode(text) {
+  return createVNode(typeSymbol.TextNode, {}, text);
+}
