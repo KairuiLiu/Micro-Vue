@@ -1,12 +1,15 @@
 import {
   createTextVNode,
+  getCurrentInstance,
   h,
   ref,
   renderSlots,
 } from '../../lib/micro-vue.esm.js';
 
 const HelloWorld = {
-  setup(props, { emit }) {},
+  setup(props, { emit }) {
+    console.log(getCurrentInstance());
+  },
   render() {
     return h('div', {}, [
       renderSlots(this.$slots, 'left'),
@@ -20,7 +23,7 @@ const HelloWorld = {
 
 export default {
   setup() {
-    debugger;
+    console.log(getCurrentInstance());
     return {
       message: ref('micro-vue'),
     };

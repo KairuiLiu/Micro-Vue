@@ -6,6 +6,8 @@ import { ShapeFlags } from './shapeFlags';
 import { initProps } from './componentProps';
 import { initSlot } from './componentSlots';
 
+let currentInstance = undefined;
+
 export function createComponent(vNode) {
   return {
     vNode,
@@ -26,13 +28,16 @@ export function setupComponent(instance) {
 }
 
 function setupStatefulComponent(instance) {
-  if (instance.vNode.shapeFlags & ShapeFlags.STATEFUL_COMPONENT)
+  if (instance.vNode.shapeFlags & ShapeFlags.STATEFUL_COMPONENT) {
+    currentInstance = instance;
     handleSetupResult(
       instance,
       instance.type.setup(shadowReadonly(instance.props), {
         emit: instance.proxy.$emit,
       })
     );
+    currentInstance = undefined;
+  }
   finishComponentSetup(instance);
 }
 
@@ -50,4 +55,8 @@ export function setupRenderEffect(instance, container) {
   const subTree = instance.render.call(instance.proxy);
   patch(null, subTree, container);
   instance.vNode.el = container;
+}
+
+export function getCurrentInstance() {
+  return currentInstance;
 }
