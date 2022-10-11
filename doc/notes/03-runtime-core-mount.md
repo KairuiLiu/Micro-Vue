@@ -608,7 +608,7 @@ function mountElement(vNode, container) {
 
 - 我们为啥不把 shadowReadonly 写入 componentPublicProxy 呢? 这样岂不是可以保护 `render` 中调用不会修改原值? 没有必要, 我们只需要保证浅层 readOnly, 而 render 是直接拿属性名的, 不会修改 props 上的属性定义.
 
-### 实现 `Emits`
+### 实现 `emits`
 
 **需求:**
 
@@ -970,3 +970,194 @@ export function getCurrentInstance() {
 }
 ```
 
+### 实现 `provide-inject`
+
+`provide-inject` 机制允许组件在 `setup` 函数中调用 `provide(key, value)` 设置一个变量. 在若干级儿组件中通过 `inject(key)` 获取值的信息传递机制. 同时该机制遵守类似内外层作用域同名时的内层变量保护机制, 例如有如下 provide 关系
+
+```mermaid
+graph TB
+A:provide-a=1  -->  B:provide-a=2  --> C:inject-a=2
+A:provide-a=1  -->  D:provide-b=1
+A:provide-a=1  -->  E:inject-a=1 -->  F:inject-b=undefined
+```
+
+也就是说当组件在父组件上无法 inject 属性时会向更上层 inject 属性.
+
+我们可以在组件实例上定义组件的 provide 与该组件的父组件然后实现递归查找的 inject 函数. 但是 JavaScript 的原型链本身就支持递归查找, 我们可以指定通过指定某个组件 provide  的 `__proto__` 为父组件的 provide 实现.
+
+- 在 instance 上加入 provide 属性记录该组件所 provide 的所有键值对并设置 `provide.__proto__ = parent.provide`
+
+  ```ts
+  export function createComponent(vNode, parent) {
+    return {
+      // ...
+      parent, // 父组件
+      provides: parent ? Object.create(parent.provides) : {}, // 组件的 provide
+    };
+  }
+  ```
+
+  我们要求在 `createComponent` 的时候提供 `parent` 属性, 那么我们也要在调用该函数时加入该参数, 该函数依赖关系如下
+
+  ```mermaid
+  graph TB
+
+  render -.-> patch --> processComponent --> mountComponent --> createComponent((createComponent)) -.-> renderEffect -.-> patch
+  patch --> processElement --> mountElement --> patch
+  ```
+
+  为了让 `createComponent` 有参数我们需要让其前置函数都带 parent 参数, 所有可能调用其前置函数的函数也要带参数. 其中存在两个特殊函数.
+
+  - `render`: 该函数用来渲染根节点, 根节点的父节点是 `null`
+  - `renderEffect`: 该函数是用来渲染组件 `instance` 的子组件 `subTree` 所以 parent 参数就是 `instance`
+
+- 实现 API
+
+  ```js
+  // @packages/runtime-core/src/apiInject.ts
+  import { getCurrentInstance } from './component';
+
+  export function provide(k, v) {
+    const currentInstance = getCurrentInstance() as any;
+    currentInstance.provides[k] = v;
+  }
+
+  export function inject(key, defaultValue) {
+    const currentInstance = getCurrentInstance() as any;
+    return currentInstance && key in currentInstance.parent.provides
+      ? currentInstance.parent.provides[key]
+      : defaultValue;
+  }
+  ```
+
+测试外层屏蔽与跨组件传递
+
+```js
+// @App.js
+const ProviderOne = {
+  setup() {
+    provide('foo', 'F1');
+    provide('bar', 'B1');
+    return () => h(ProviderTwo);
+  },
+};
+
+const ProviderTwo = {
+  setup() {
+    provide('foo', 'F2');
+    provide('baz', 'Z2');
+    const i_foo = inject('foo');
+    const i_bar = inject('bar');
+    return () =>
+      h('div', {}, [
+        h('span', {}, '@ provide 2:'),
+        h('span', {}, 'foo: ' + i_foo),
+        h('span', {}, 'bar: ' + i_bar),
+        h(Consumer),
+      ]);
+  },
+};
+
+const Consumer = {
+  setup() {
+    const t = getCurrentInstance();
+    const i_foo = inject('foo');
+    const i_bar = inject('bar');
+    const i_baz = inject('baz');
+    return () =>
+      h('div', {}, [
+        h('span', {}, '@ consumer:'),
+        h('span', {}, 'foo: ' + i_foo),
+        h('span', {}, 'bar: ' + i_bar),
+        h('span', {}, 'baz: ' + i_baz),
+      ]);
+  },
+};
+
+export default {
+  name: 'App',
+  setup() {
+    return () => h('div', {}, [h('p', {}, 'apiInject'), h(ProviderOne)]);
+  },
+};
+```
+
+结果
+
+```
+apiInject
+
+@ provide 2:foo: F1bar: B1
+@ consumer:foo: F2bar: B1baz: Z2
+```
+
+### 小结
+
+到目前为止我们完成了组件挂载部分. 那我们折腾了点什么呢? 我们就是实现了 `h` 函数的不同功能. 在实现 API 的时候我们也要牢记 API 是为谁实现的.
+
+| 参数       | 对于组件                        | 对于Element          |
+| ---------- | ------------------------------- | -------------------- |
+| `type`     | 包含 `render` 与 `setup` 的对象 | 标签名               |
+| `props`    | 组件实例的 `props`              | 包含属性与事件的对象 |
+| `children` | slots                           | 子元素 / 子组件      |
+
+可以发现, 这个 API 设计的非常对仗工整.
+
+- 对于 `type`: 分别传入对象与标签名, 无话可说
+
+- 对于 `props`:
+
+  - 对于 Element: 传入一堆 attribute. Element 是会被直接渲染的, 我们直接将 Key-Value 写入标签即可. 在实践中我们发现做事件绑定时, 由于 value 是函数名, 我们无法直接将 `onXxx` 写入标签. 所以需要手动处理事件调用
+  - 对于组件: 传入一堆 props 与 emits. **难道就没有类似 `onClick` 的事件监听或者类似 `style` 的属性吗? 没有! 组件本身是不会被渲染的! 不可能向组件标签上绑定什么东西. 组件能传入的只有用于 setup / render 的属性与 emits 事件**
+
+- 对于 `children`:
+
+  - 对于 Element: 传入一堆子元素 / 子组件, 挨个 patch 就行
+
+  - 对于组件: 传入 slots, 将 slots 在添加到元素上
+
+  - **为啥不让组件的子元素也写入 children 呢? 这样看的多工整!**
+
+    组件的子元素在组件的 render 里面, 不在 `children`
+
+  - **为啥不让Element的子元素也写入 render 呢? **
+
+    人家 Element 压根就没对象存子元素的
+
+  - **这尤雨溪懂个锤子 Vue, 设计的 API 咋还要分类讨论啊!**
+
+    实际上这个 API 设计的很有趣, 看看我们在 template 中是怎么书写的(从前面再抄一遍)
+
+    对于 Element
+
+    ```html
+    <template>
+        <div>
+            <span>111</span>
+            <span>222</span>
+        </div>
+    </template>
+    ```
+    `h` 函数写法
+
+          ```js
+          h('div', {}, [h('span', {}, '111'), h('span', {}, '222')])
+          ```
+    对于组件
+          ```html
+          <template>
+            <Comp>
+              <span>111</span>
+              <span>222</span>
+            </Comp>
+          </template>
+          ```
+    `h` 函数写法
+
+          ```js
+          h(Comp, {}, [h('span', {}, '111'), h('span', {}, '222')])
+          ```
+
+    在结构上是对仗的. 这 API 设计的太伟大了
+
+此外我们还构建了特殊的 `Fragment` 与 `TextNode` 这俩都是魔改 patch 实现的. 我们还实现了 `provide-inject` API, 这里借助原型链实现功能也很有趣

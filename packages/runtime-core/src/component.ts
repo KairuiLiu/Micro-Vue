@@ -8,7 +8,7 @@ import { initSlot } from './componentSlots';
 
 let currentInstance = undefined;
 
-export function createComponent(vNode) {
+export function createComponent(vNode, parent) {
   return {
     vNode,
     type: vNode.type, // 图方便
@@ -16,6 +16,8 @@ export function createComponent(vNode) {
     setupResult: {},
     proxy: null,
     slots: {},
+    parent,
+    provides: parent ? Object.create(parent.provides) : {},
   };
 }
 
@@ -53,7 +55,7 @@ function finishComponentSetup(instance) {
 
 export function setupRenderEffect(instance, container) {
   const subTree = instance.render.call(instance.proxy);
-  patch(null, subTree, container);
+  patch(null, subTree, container, instance);
   instance.vNode.el = container;
 }
 
