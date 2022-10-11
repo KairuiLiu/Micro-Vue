@@ -29,7 +29,7 @@ function setupStatefulComponent(instance) {
   if (instance.vNode.shapeFlags & ShapeFlags.STATEFUL_COMPONENT)
     handleSetupResult(
       instance,
-      instance.type.setup.call(instance, shadowReadonly(instance.props), {
+      instance.type.setup(shadowReadonly(instance.props), {
         emit: instance.proxy.$emit,
       })
     );

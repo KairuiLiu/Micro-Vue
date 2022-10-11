@@ -20,6 +20,7 @@ const HelloWorld = {
 
 export default {
   setup() {
+    debugger;
     return {
       message: ref('micro-vue'),
     };

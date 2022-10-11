@@ -1,4 +1,4 @@
-import { testAndTransArray } from '../../share/index';
+import { isObject, testAndTransArray } from '../../share/index';
 import { h } from './h';
 import { typeSymbol } from './vnode';
 
@@ -7,7 +7,8 @@ export function initSlot(instance) {
 }
 
 export function renderSlots(slots, name = 'default', ...args) {
-  let rSlots = name in slots ? slots[name](...args) : [];
+  let rSlots = name in slots ? slots[name] : [];
+  rSlots = isObject(rSlots) ? rSlots : rSlots(...args);
   rSlots = testAndTransArray(rSlots);
   return h(typeSymbol.FragmentNodeNode, {}, rSlots);
 }
