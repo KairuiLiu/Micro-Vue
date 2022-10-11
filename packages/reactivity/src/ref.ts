@@ -46,6 +46,6 @@ export function isRef(value) {
   return !!value?.__v_isRef;
 }
 
-export function proxyRefs(origin) {
+export function proxyRefs(origin = {}) {
   return new Proxy(origin, proxyProxyRefConfig);
 }

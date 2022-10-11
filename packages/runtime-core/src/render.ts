@@ -36,7 +36,7 @@ function processElement(vNode1, vNode2, container) {
 function updateElement(vNode1, vNode2, container) {}
 
 function mountElement(vNode, container) {
-  const el = document.createElement(vNode.type) as HTMLElement;
+  const el = (vNode.el = document.createElement(vNode.type) as HTMLElement);
   Object.keys(vNode.props).forEach((k) => {
     if (/^on[A-Z]/.test(k))
       el.addEventListener(

@@ -3,6 +3,7 @@ import { emit } from './componentEmit';
 const specialInstanceKeyMap = {
   $el: (instance) => instance.vNode.el,
   $emit: (instance) => emit.bind(null, instance),
+  $slots: (instance) => instance.slots,
 };
 
 export const publicInstanceProxy = {
