@@ -4,15 +4,44 @@ import {
   setupRenderEffect,
 } from './component';
 import { ShapeFlags } from './shapeFlags';
+import { typeSymbol } from './vnode';
 
 export function render(vNode, container) {
   patch(null, vNode, container); // 第一次创建没有老元素
 }
 
 export function patch(vNode1, vNode2, container) {
-  if (vNode2.shapeFlags & ShapeFlags.ELEMENT)
-    processElement(vNode1, vNode2, container);
-  else processComponent(vNode1, vNode2, container);
+  switch (vNode2.type) {
+    case typeSymbol.FragmentNodeNode:
+      processFragmentNode(vNode1, vNode2, container);
+      break;
+    case typeSymbol.TextNode:
+      processTextNode(vNode1, vNode2, container);
+      break;
+    default:
+      if (vNode2.shapeFlags & ShapeFlags.ELEMENT)
+        processElement(vNode1, vNode2, container);
+      else processComponent(vNode1, vNode2, container);
+  }
+}
+
+function processFragmentNode(vNode1, vNode2, container) {
+  if (vNode1) return;
+  return mountFragmentNode(vNode2, container);
+}
+
+function mountFragmentNode(vNode, container) {
+  vNode.children.forEach((d) => patch(null, d, container));
+}
+
+function processTextNode(vNode1, vNode2, container) {
+  if (vNode1) return;
+  return mountTextNode(vNode2, container);
+}
+
+function mountTextNode(vNode, container) {
+  const elem = document.createTextNode(vNode.children);
+  container.appendChild(elem);
 }
 
 function processComponent(vNode1, vNode2, container) {
