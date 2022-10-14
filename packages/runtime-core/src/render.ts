@@ -61,41 +61,57 @@ function mountComponent(vNode, container, parent) {
 }
 
 function processElement(vNode1, vNode2, container, parent) {
-  if (vNode1) return updateElement(vNode1, vNode2, container);
+  if (vNode1) return updateElement(vNode1, vNode2, container, parent);
   return mountElement(vNode2, container, parent);
 }
 
-function updateElement(vNode1, vNode2, container) {
+function updateElement(vNode1, vNode2, container, parent) {
   const elem = (vNode2.el = vNode1.el);
   patchProps(elem, vNode1?.props, vNode2.props);
-  updateChildren(elem, vNode1, vNode2);
+  updateChildren(elem, vNode1, vNode2, container, parent);
 }
 
-function updateChildren(elem, vNode1, vNode2) {
-  if (
-    vNode1.shapeFlags & ShapeFlags.TEXT_CHILDREN &&
-    vNode2.shapeFlags & ShapeFlags.TEXT_CHILDREN
-  ) {
-    elem.textContent = vNode2.children;
-  } else if (
-    vNode1.shapeFlags & ShapeFlags.ARRAY_CHILDREN &&
-    vNode2.shapeFlags & ShapeFlags.TEXT_CHILDREN
-  ) {
-    [...elem].forEach((d) => d.remove());
-    elem.textContent = vNode2.children;
-  } else if (
-    vNode1.shapeFlags & ShapeFlags.TEXT_CHILDREN &&
-    vNode2.shapeFlags & ShapeFlags.ARRAY_CHILDREN
-  ) {
-    elem.textContent = '';
-    vNode2.children.forEach((element) => {
-      patch(null, element, vNode1.el, vNode2.parent);
-    });
-  } else if (
-    vNode1.shapeFlags & ShapeFlags.ARRAY_CHILDREN &&
-    vNode2.shapeFlags & ShapeFlags.ARRAY_CHILDREN
-  ) {
-    console.log('FUCK');
+function updateChildren(elem, vNode1, vNode2, container, parent) {
+  if (vNode2.shapeFlags & ShapeFlags.TEXT_CHILDREN) {
+    if (vNode1.shapeFlags & ShapeFlags.ARRAY_CHILDREN)
+      [...elem.children].forEach((d) => d.remove());
+    if (vNode2.children !== vNode1.children) elem.textContent = vNode2.children;
+  } else {
+    if (vNode1.shapeFlags & ShapeFlags.TEXT_CHILDREN) {
+      elem.remove();
+      vNode2.children.forEach((element) => {
+        patch(null, element, container, parent);
+      });
+    } else {
+      patchKeyedChildren(vNode1.children, vNode2.children, container, parent);
+    }
+  }
+}
+
+function patchKeyedChildren(c1, c2, container, parent) {
+  let i = 0,
+    e1 = c1.length - 1,
+    e2 = c2.length - 1;
+  for (; i <= Math.min(e1, e2); i += 1)
+    if (c1[i].type !== c2[i].type || c1[i].props.key !== c2[i].props.key) break;
+  for (; e1 >= 0 && e2 >= 0; e1 -= 1, e2 -= 1)
+    if (c1[e1].type !== c2[e2].type || c1[e1].props.key !== c2[e2].props.key)
+      break;
+  // 右侧有新节点
+  if (i === c1.length)
+    c2.slice(i).forEach((d) => patch(null, d, container, parent));
+  // 右侧有老节点
+  //     传入的是 vNode 要加上 el 找到 DOM 对象
+  if (i === c2.length) c1.slice(i).forEach((d) => d.el.remove());
+  // 左侧有新节点
+  debugger;
+  if (e1 === -1 && e2 !== -1)
+    c2.slice(0, e2 + 1).forEach((d) => patch(null, d, container, parent));
+  // 左侧有老节点
+  if (e2 === -1 && e1 !== -1) c1.slice(0, e1).forEach((d) => d.el.remove());
+  // 中间
+  if (i <= Math.min(e1, e2)) {
+    console.log('MID DIFF');
   }
 }
 
