@@ -1,3 +1,4 @@
+import { isUNKey } from '../../share';
 import {
   createComponent,
   setupComponent,
@@ -49,7 +50,9 @@ function processComponent(vNode1, vNode2, container, parent) {
   return mountComponent(vNode2, container, parent);
 }
 
-function updateComponent(vNode1, vNode2, container) {}
+function updateComponent(vNode1, vNode2, container) {
+  debugger;
+}
 
 function mountComponent(vNode, container, parent) {
   const instance = createComponent(vNode, parent);
@@ -62,22 +65,64 @@ function processElement(vNode1, vNode2, container, parent) {
   return mountElement(vNode2, container, parent);
 }
 
-function updateElement(vNode1, vNode2, container) {}
+function updateElement(vNode1, vNode2, container) {
+  const elem = (vNode2.el = vNode1.el);
+  patchProps(elem, vNode1?.props, vNode2.props);
+  updateChildren(elem, vNode1, vNode2);
+}
+
+function updateChildren(elem, vNode1, vNode2) {
+  if (
+    vNode1.shapeFlags & ShapeFlags.TEXT_CHILDREN &&
+    vNode2.shapeFlags & ShapeFlags.TEXT_CHILDREN
+  ) {
+    elem.textContent = vNode2.children;
+  } else if (
+    vNode1.shapeFlags & ShapeFlags.ARRAY_CHILDREN &&
+    vNode2.shapeFlags & ShapeFlags.TEXT_CHILDREN
+  ) {
+    [...elem].forEach((d) => d.remove());
+    elem.textContent = vNode2.children;
+  } else if (
+    vNode1.shapeFlags & ShapeFlags.TEXT_CHILDREN &&
+    vNode2.shapeFlags & ShapeFlags.ARRAY_CHILDREN
+  ) {
+    elem.textContent = '';
+    vNode2.children.forEach((element) => {
+      patch(null, element, vNode1.el, vNode2.parent);
+    });
+  } else if (
+    vNode1.shapeFlags & ShapeFlags.ARRAY_CHILDREN &&
+    vNode2.shapeFlags & ShapeFlags.ARRAY_CHILDREN
+  ) {
+    console.log('FUCK');
+  }
+}
 
 function mountElement(vNode, container, parent) {
   const el = (vNode.el = document.createElement(vNode.type) as HTMLElement);
-  Object.keys(vNode.props).forEach((k) => {
-    if (/^on[A-Z]/.test(k))
-      el.addEventListener(
-        k.replace(/^on([A-Z].*)/, (_, e) => e[0].toLowerCase() + e.slice(1)),
-        vNode.props[k]
-      );
-    else el.setAttribute(k, vNode.props[k]);
-  });
+  patchProps(el, {}, vNode.props);
   if (vNode.shapeFlags & ShapeFlags.ARRAY_CHILDREN) {
     vNode.children.forEach((d) => {
       patch(null, d, el, parent);
     });
   } else el.textContent = vNode.children;
   container.appendChild(el);
+}
+
+function patchProps(elem: HTMLElement, oldProps = {}, newProps = {}) {
+  const props = [
+    ...new Set([...Object.keys(oldProps), ...Object.keys(newProps)]),
+  ];
+  props.forEach((k) => {
+    let ek = /^on[A-Z]/.test(k)
+      ? k.replace(/^on([A-Z].*)/, (_, e) => e[0].toLowerCase() + e.slice(1))
+      : undefined;
+    if (isUNKey(k, oldProps) && (!isUNKey(k, newProps) || ek))
+      ek ? elem.removeEventListener(ek, oldProps[k]) : elem.removeAttribute(k);
+    else if (isUNKey(k, newProps))
+      ek
+        ? elem.addEventListener(ek, newProps[k])
+        : elem.setAttribute(k, newProps[k]);
+  });
 }

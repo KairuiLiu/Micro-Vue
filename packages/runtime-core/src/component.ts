@@ -1,5 +1,5 @@
 import { publicInstanceProxy } from './componentPublicInstance';
-import { proxyRefs, shadowReadonly } from '../../index';
+import { effect, proxyRefs, shadowReadonly } from '../../reactivity/src';
 import { isFunction } from '../../share/index';
 import { patch } from './render';
 import { ShapeFlags } from './shapeFlags';
@@ -18,6 +18,7 @@ export function createComponent(vNode, parent) {
     slots: {},
     parent,
     provides: parent ? Object.create(parent.provides) : {},
+    subTree: null,
   };
 }
 
@@ -54,9 +55,12 @@ function finishComponentSetup(instance) {
 }
 
 export function setupRenderEffect(instance, container) {
-  const subTree = instance.render.call(instance.proxy);
-  patch(null, subTree, container, instance);
-  instance.vNode.el = container;
+  effect(() => {
+    const subTree = instance.render.call(instance.proxy);
+    patch(instance.subTree, subTree, container, instance);
+    instance.vNode.el = container;
+    instance.subTree = subTree;
+  });
 }
 
 export function getCurrentInstance() {
