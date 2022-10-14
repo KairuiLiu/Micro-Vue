@@ -54,10 +54,10 @@ function finishComponentSetup(instance) {
   instance.render = instance.render || instance.type.render;
 }
 
-export function setupRenderEffect(instance, container) {
+export function setupRenderEffect(instance, container, anchor) {
   effect(() => {
     const subTree = instance.render.call(instance.proxy);
-    patch(instance.subTree, subTree, container, instance);
+    patch(instance.subTree, subTree, container, instance, anchor);
     instance.vNode.el = container;
     instance.subTree = subTree;
   });

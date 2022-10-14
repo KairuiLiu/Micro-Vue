@@ -84,8 +84,8 @@ const A2A = {
   },
   render() {
     return this.ot
-      ? h('div', {}, before_A_right_check_add)
-      : h('div', {}, after_A_right_check_add);
+      ? h('div', {}, before_A_right_check_remove)
+      : h('div', {}, after_A_right_check_remove);
   },
 };
 
