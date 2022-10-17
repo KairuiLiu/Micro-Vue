@@ -1,4 +1,4 @@
-import { isUNKey } from '../../share';
+import { isUNKey, LIS } from '../../share';
 import {
   createComponent,
   setupComponent,
@@ -99,7 +99,6 @@ function patchKeyedChildren(c1: any[], c2: any[], container, parent, anchor) {
   let i = 0,
     e1 = c1.length - 1,
     e2 = c2.length - 1;
-
   const isSameType = (v1, v2) =>
     v1.type === v2.type && v1.props.key === v2.props.key;
   // 找到区间
@@ -125,18 +124,30 @@ function patchKeyedChildren(c1: any[], c2: any[], container, parent, anchor) {
   else if (i <= Math.min(e1, e2)) {
     const newRange = c2.slice(i, e2 + 1);
     const oldRange = c1.slice(i, e1 + 1);
+    const new2oldIndex = new Map();
     const key2indexNew = new Map(
       newRange.map((d, idx) => [d.props.key, i + idx])
     );
 
-    oldRange.forEach(
-      (vnode) => key2indexNew.has(vnode.props.key) || vnode.el.remove()
+    oldRange.forEach((vnode, idx) => {
+      if (key2indexNew.has(vnode.props.key)) {
+        new2oldIndex.set(key2indexNew.get(vnode.props.key), idx);
+      } else vnode.el.remove();
+    });
+    const lis = LIS([...new2oldIndex.keys()]);
+    newRange.reduceRight(
+      (prev, cur, curIndex) => {
+        const oldVnode = oldRange[new2oldIndex.get(curIndex + i)];
+        if (lis.includes(curIndex + i))
+          return patch(oldVnode, cur, container, parent, prev?.el);
+        if (new2oldIndex.has(curIndex + i)) {
+          container.insertBefore(oldVnode.el, prev?.el);
+          patch(oldVnode, cur, container, parent, prev?.el);
+        } else patch(null, cur, container, parent, prev?.el);
+        return cur;
+      },
+      e2 + 1 >= c2.length ? null : c2[e2 + 1]
     );
-
-    const idxSequence = oldRange.map((vnode) =>
-      key2indexNew.has(vnode.props.key) ? key2indexNew.get(vnode.props.key) : -1
-    );
-    console.log(idxSequence);
   }
 }
 
