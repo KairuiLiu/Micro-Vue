@@ -701,3 +701,74 @@ function patchKeyedChildren( c1, c2, container, parentAnchor, parentComponent) {
 
 - 双端对比法的理论性能可能并不是最优秀的, 但是其用于前端 vNode list 的对比很优秀, 因为前端 DOM 的修改很少涉及全局修改, 一般都是一两个元素的增减调换, 双端对比法可以快速锁定修改区间, 忽略不变部分, LIS 可以保证在较少插入次数下实现位置调整
 - 为什么要讨论特殊情况, 明明可以直接利用最后的通用算法求解. 首先这个特判会让单次 update 快很多, 同时考虑前端应用场景, update 单个头尾 / 中部元素比较频繁, 这个特判会被特别多次调用
+
+### 组件更新
+
+组件 vNode 更新时 `setupRenderEffect` 会触发 `patch(组件vNode, ...)` 最后 `updateComponent`
+
+不管组件有多复杂我们更新的都是组件挂载的 DOM, 组件的 render 返回的是一个 `h` 也就是说组件最多有一个根 DOM, 我们可以直接更新这个 DOM.
+
+我们更新的时候拿到的是 vNode, 但是为组件传入的 props 还在 instance 上, 我们需要为 vNode 绑定 instance (使用 `.component` 属性)
+
+```ts
+// @packages/runtime-core/src/render.ts
+function updateComponent(vNode1, vNode2, container, parent, anchor) {
+  vNode2.el = vNode1.el; // 绑定 DOM
+  vNode2.component = vNode1.component; // 绑定 instance
+  // 判断 props 一不一样: 一样就不更新 (说明是父节点触发了, 递归到子节点)
+  //                      不一样就重新渲染这个组件下的 vNode
+  if (isSameProps(vNode1.props, vNode2.props)) {
+    vNode1.component.vNode = vNode2;
+  } else {
+    // 我们要手动触发这个唯一的子 vNode 的render, 所以还需要保存每个 vNode 的 render 函数
+    // 保存在 `.runner`
+    // 同时记录 .next 为新 vNode
+    vNode1.component.next = vNode2;
+    // 调用老 vNode 的渲染函数
+    vNode1.component?.runner && vNode1.component.runner();
+  }
+}
+```
+
+判断组件是否有必要更新(`props` 一不一样)
+
+```ts
+// @packages/runtime-core/src/component.ts
+export function isSameProps(props1 = {}, props2 = {}) {
+  let res = true;
+  const props = [...new Set([...Object.keys(props1), ...Object.keys(props2)])];
+  props.forEach((k) => props1[k] !== props2[k] && (res = false));
+  return res;
+}
+```
+
+在挂载组件时同步记录 instance
+
+```diff
+// @packages/runtime-core/src/render.ts
+function mountComponent(vNode, container, parent, anchor) {
+  const instance = createComponent(vNode, parent);
++ vNode.component = instance;
+  setupComponent(instance);
+  setupRenderEffect(instance, container, anchor);
+}
+```
+
+在重新渲染组件时迁移 props
+
+```diff
+// @packages/runtime-core/src/component.ts
+export function setupRenderEffect(instance, container, anchor) {
++ instance.runner = effect(() => {
+    const subTree = instance.render.call(instance.proxy);
++   if (instance.next) {
++     instance.vNode = instance.next;
++     instance.props = instance.next.props;
++     instance.next = null;
++   }
+    patch(instance.subTree, subTree, container, instance, anchor);
+    instance.vNode.el = container;
+    instance.subTree = subTree;
+  });
+}
+```

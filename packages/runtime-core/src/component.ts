@@ -19,6 +19,8 @@ export function createComponent(vNode, parent) {
     parent,
     provides: parent ? Object.create(parent.provides) : {},
     subTree: null,
+    runner: null,
+    next: null,
   };
 }
 
@@ -54,9 +56,21 @@ function finishComponentSetup(instance) {
   instance.render = instance.render || instance.type.render;
 }
 
+export function isSameProps(props1 = {}, props2 = {}) {
+  let res = true;
+  const props = [...new Set([...Object.keys(props1), ...Object.keys(props2)])];
+  props.forEach((k) => props1[k] !== props2[k] && (res = false));
+  return res;
+}
+
 export function setupRenderEffect(instance, container, anchor) {
-  effect(() => {
+  instance.runner = effect(() => {
     const subTree = instance.render.call(instance.proxy);
+    if (instance.next) {
+      instance.vNode = instance.next;
+      instance.props = instance.next.props;
+      instance.next = null;
+    }
     patch(instance.subTree, subTree, container, instance, anchor);
     instance.vNode.el = container;
     instance.subTree = subTree;

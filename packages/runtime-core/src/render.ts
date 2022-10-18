@@ -1,6 +1,7 @@
 import { isUNKey, LIS } from '../../share';
 import {
   createComponent,
+  isSameProps,
   setupComponent,
   setupRenderEffect,
 } from './component';
@@ -46,16 +47,24 @@ function mountTextNode(vNode, container: HTMLElement, anchor) {
 }
 
 function processComponent(vNode1, vNode2, container, parent, anchor) {
-  if (vNode1) return updateComponent(vNode1, vNode2, container);
+  if (vNode1) return updateComponent(vNode1, vNode2, container, parent, anchor);
   return mountComponent(vNode2, container, parent, anchor);
 }
 
-function updateComponent(vNode1, vNode2, container) {
-  debugger;
+function updateComponent(vNode1, vNode2, container, parent, anchor) {
+  vNode2.el = vNode1.el;
+  vNode2.component = vNode1.component;
+  if (isSameProps(vNode1.props, vNode2.props)) {
+    vNode1.component.vNode = vNode2;
+  } else {
+    vNode1.component.next = vNode2;
+    vNode1.component?.runner && vNode1.component.runner();
+  }
 }
 
 function mountComponent(vNode, container, parent, anchor) {
   const instance = createComponent(vNode, parent);
+  vNode.component = instance;
   setupComponent(instance);
   setupRenderEffect(instance, container, anchor);
 }
