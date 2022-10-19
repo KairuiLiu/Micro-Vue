@@ -1,3 +1,4 @@
+import { isObject } from '../../share';
 import { createVNode } from './vnode';
 
 export function createApp(render, rootComponent) {
@@ -5,7 +6,12 @@ export function createApp(render, rootComponent) {
     _component: rootComponent,
     mount(container) {
       const vNode = createVNode(rootComponent);
-      render(vNode, document.querySelector(container));
+      render(
+        vNode,
+        isObject(container)
+          ? container
+          : document.querySelector(container)
+      );
     },
   };
 }

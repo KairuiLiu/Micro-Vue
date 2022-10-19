@@ -1,31 +1,22 @@
-import { createRenderer, isUNKey } from '../../lib/micro-vue.esm.js';
+import { createRenderer } from '../../lib/micro-vue.esm.js';
+export * from '../../lib/micro-vue.esm.js';
 
-export const createElement = (v) => document.createElement(v);
+export const createElement = (v) => {
+  const rect = new PIXI.Graphics();
+  rect.beginFill(0xff0000);
+  rect.drawRect(0, 0, 100, 100);
+  rect.endFill();
+  return rect;
+};
 
-export const createText = (v) => document.createTextNode(v);
-
-export const remove = (el) => el.parent && el.parent.remove(el);
-
-export const insert = (el, parent, anchor) => parent.insertBefore(el, anchor);
-
-export const setText = (el, text) => (el.nodeValue = text);
-
-export const setElementText = (el, text) => (el.textContent = text);
+export const insert = (el, parent, anchor) => parent.addChild(el);
 
 export function patchProps(elem, oldProps = {}, newProps = {}) {
   const props = [
     ...new Set([...Object.keys(oldProps), ...Object.keys(newProps)]),
   ];
   props.forEach((k) => {
-    let ek = /^on[A-Z]/.test(k)
-      ? k.replace(/^on([A-Z].*)/, (_, e) => e[0].toLowerCase() + e.slice(1))
-      : undefined;
-    if (isUNKey(k, oldProps) && (!isUNKey(k, newProps) || ek))
-      ek ? elem.removeEventListener(ek, oldProps[k]) : elem.removeAttribute(k);
-    else if (isUNKey(k, newProps))
-      ek
-        ? elem.addEventListener(ek, newProps[k])
-        : elem.setAttribute(k, newProps[k]);
+    elem[k] = newProps[k];
   });
 }
 
@@ -36,12 +27,12 @@ function ensureRenderer() {
     renderer ||
     (renderer = createRenderer({
       createElement,
-      createText,
-      setText,
-      setElementText,
+      createText: null,
+      setText: null,
+      setElementText: null,
       patchProps,
       insert,
-      remove,
+      remove: null,
     }))
   );
 }
@@ -50,4 +41,7 @@ export const createApp = (...args) => {
   return ensureRenderer().createApp(...args);
 };
 
-export * from '../../lib/micro-vue.esm.js';
+const game = new PIXI.Application({ width: 640, height: 360 });
+
+document.body.append(game.view);
+export const el = game.stage;

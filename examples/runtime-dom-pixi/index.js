@@ -1,4 +1,4 @@
-import { createApp } from './runtime-pixi.js';
+import { createApp, el } from './runtime-pixi.js';
 import App from './App.js';
 
-createApp(App).mount('#app');
+createApp(App).mount(el);
