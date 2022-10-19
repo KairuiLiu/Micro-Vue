@@ -63,18 +63,39 @@ export function isSameProps(props1 = {}, props2 = {}) {
   return res;
 }
 
+export function nextTick(e) {
+  return Promise.resolve().then(e);
+}
+
+function componentUpdateFn(instance, container, anchor) {
+  const subTree = instance.render.call(instance.proxy);
+  if (instance.next) {
+    instance.vNode = instance.next;
+    instance.props = instance.next.props;
+    instance.next = null;
+  }
+  patch(instance.subTree, subTree, container, instance, anchor);
+  instance.vNode.el = container;
+  instance.subTree = subTree;
+}
+
+const jobs: Set<any> = new Set();
+
+function insertJob(instance) {
+  jobs.add(instance);
+  if (jobs.size <= 1)
+    nextTick(() => [...jobs].forEach((d) => jobs.delete(d) && d()));
+}
+
 export function setupRenderEffect(instance, container, anchor) {
-  instance.runner = effect(() => {
-    const subTree = instance.render.call(instance.proxy);
-    if (instance.next) {
-      instance.vNode = instance.next;
-      instance.props = instance.next.props;
-      instance.next = null;
+  instance.runner = effect(
+    () => componentUpdateFn(instance, container, anchor),
+    {
+      scheduler: () => {
+        insertJob(instance.runner);
+      },
     }
-    patch(instance.subTree, subTree, container, instance, anchor);
-    instance.vNode.el = container;
-    instance.subTree = subTree;
-  });
+  );
 }
 
 export function getCurrentInstance() {
