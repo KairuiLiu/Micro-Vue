@@ -3,6 +3,7 @@ import {
   getCurrentInstance,
   h,
   ref,
+  createTextVNode,
 } from '../../lib/micro-vue.esm.js';
 
 export default {
@@ -23,5 +24,6 @@ export default {
   },
   render() {
     return h('div', {}, 'HTML Context:' + this.cnt);
+    // return createTextVNode('HTML Context:' + this.cnt);
   },
 };

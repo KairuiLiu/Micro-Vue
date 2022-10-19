@@ -1,7 +1,6 @@
 import { createVNode } from './vnode';
-import { render } from './render';
 
-export function createApp(rootComponent) {
+export function createApp(render, rootComponent) {
   return {
     _component: rootComponent,
     mount(container) {

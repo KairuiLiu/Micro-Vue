@@ -1,7 +1,6 @@
 import { publicInstanceProxy } from './componentPublicInstance';
 import { effect, proxyRefs, shadowReadonly } from '../../reactivity/src';
 import { isFunction } from '../../share/index';
-import { patch } from './render';
 import { ShapeFlags } from './shapeFlags';
 import { initProps } from './componentProps';
 import { initSlot } from './componentSlots';
@@ -67,7 +66,7 @@ export function nextTick(e) {
   return Promise.resolve().then(e);
 }
 
-function componentUpdateFn(instance, container, anchor) {
+function componentUpdateFn(instance, container, anchor, patch) {
   const subTree = instance.render.call(instance.proxy);
   if (instance.next) {
     instance.vNode = instance.next;
@@ -87,9 +86,9 @@ function insertJob(instance) {
     nextTick(() => [...jobs].forEach((d) => jobs.delete(d) && d()));
 }
 
-export function setupRenderEffect(instance, container, anchor) {
+export function setupRenderEffect(instance, container, anchor, patch) {
   instance.runner = effect(
-    () => componentUpdateFn(instance, container, anchor),
+    () => componentUpdateFn(instance, container, anchor, patch),
     {
       scheduler: () => {
         insertJob(instance.runner);
