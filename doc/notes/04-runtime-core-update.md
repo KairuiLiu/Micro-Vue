@@ -772,3 +772,75 @@ export function setupRenderEffect(instance, container, anchor) {
   });
 }
 ```
+
+### 实现 `nextTrick`
+
+我们希望当 Reactivity 发生变化时组件与 DOM 是同步更新的, 这可能会带来不必要的资源消耗, 我们希望组件更新可以变成异步的
+
+```ts
+export default {
+  setup() {
+    let cnt = ref(1);
+    window.test = () => {
+      for (; cnt.value < 100; cnt.value++); // 这里会触发100次组件更新
+    };
+    return { cnt };
+  },
+  render() {
+    return h('div', {}, 'HTML Context:' + this.cnt);
+  },
+};
+```
+
+如何完成异步更新呢? 我们可以将更新任务放入微任务这样只有在同步代码执行完成后微任务才会执行. 这也是 Vue 中 `nextTrick` 的实现原理
+
+```ts
+export function nextTick(e) {
+  return Promise.resolve().then(e);
+}
+```
+
+更新实际上就是执行 renderEffect 的中 effect 的 runner. 可以利用 effect-scheduler 实现首次触发执行 runner 之后触发执行 scheduler. 在 scheduler 中我们可以将更新事件加入队列. 并注册更新队列的微事件
+
+```ts
+const jobs: Set<any> = new Set(); // 任务队列
+
+function insertJob(instance) {
+  jobs.add(instance); // 不重复添加
+  if (jobs.size <= 1) // 确保之注册一个微任务, 防止创建不必要的 Promise.resolve()
+    nextTick(() => [...jobs].forEach((d) => jobs.delete(d) && d()));
+}
+
+export function setupRenderEffect(instance, container, anchor) {
+  instance.runner = effect(
+    () => componentUpdateFn(instance, container, anchor), // 将更新内容提出为函数
+    {
+      scheduler: () => {
+        insertJob(instance.runner);
+      },
+    }
+  );
+  // ...
+}
+```
+
+当 Reactivity 发生变化时, 同步执行 insertJob 同步 add Set, 注册一个微任务用于在同步代码都执行完成后执行所有刷新函数
+
+**测试**
+
+```ts
+setup() {
+    let cnt = ref(1);
+    const instance = getCurrentInstance();
+    window.test = () => {
+        for (; cnt.value < 100; cnt.value++);
+        console.log('1', instance.vNode.el.innerHTML); // 此时还没修改 还是 1
+        nextTick(() => {
+            console.log('2', instance.vNode.el.innerHTML); // 此时变为 100
+        });
+    };
+    return { cnt };
+},
+```
+
+这也告诉我们, 如果在 Vue 中触发了组件变化, 如果还需要同时获取组件的状态应该使用 `nextTrick`

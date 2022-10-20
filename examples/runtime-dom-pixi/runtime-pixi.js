@@ -1,3 +1,4 @@
+// modify to export createRenderer (cause the export level is different from vue runtime-dom)
 import { createRenderer } from '../../lib/micro-vue.esm.js';
 export * from '../../lib/micro-vue.esm.js';
 
