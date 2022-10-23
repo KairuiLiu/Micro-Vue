@@ -15,15 +15,25 @@ function createRoot(children) {
 function parseChildren(context) {
   const nodes = [] as any[];
   let node = null as any;
-  if (context.source.startsWith('{{')) node = parseInterpolation(context);
-  else if (/^<[a-zA-Z]/.test(context.source)) node = parseElement(context);
-  else node = parseText(context);
-  nodes.push(node);
+  while (context.source) {
+    if (context.source.startsWith('{{')) node = parseInterpolation(context);
+    else if (/^<[a-zA-Z]/.test(context.source)) node = parseElement(context);
+    else node = parseText(context);
+    nodes.push(node);
+  }
   return nodes;
 }
 
 function parseText(context) {
-  const content = context.source;
+  let content = context.source;
+  if (~content.indexOf('{{')) {
+    content = content.slice(0, content.indexOf('{{') );
+  } else if (/<\/?[a-zA-Z].+/.test(content)) {
+    content = content.slice(
+      0,
+      content.length - content.match(/<\/?[a-zA-Z].+/).length
+    );
+  }
   adviceBy(context, content.length);
   return {
     type: NodeTypes.TEXT,
@@ -32,12 +42,13 @@ function parseText(context) {
 }
 
 function parseElement(context) {
-  const tagMatch = context.source.match(/^<([a-zA-Z]*)>.*<\/\1>/);
+  const tagMatch = context.source.match(/^<([a-zA-Z]*)>(.*)<\/\1>/);
   const tag = tagMatch[1];
   adviceBy(context, tagMatch[0].length);
   return {
     type: NodeTypes.ELEMENT,
     tag,
+    children: parseChildren(createParserContext(tagMatch[2])),
   };
 }
 
