@@ -20,13 +20,13 @@
 
 - 依赖: `typescript` / `@types/node` / `jest` / `ts-jest` / `@types/jest`
 
-### 构建基本 `effect` 与 `reactive`
+### 实现基本 `effect` 与 `reactive`
 
 **TDD**
 
 TDD(Test-Driven Development), 是敏捷开发中的一项核心实践和技术, 也是一种设计方法论. TDD的原理是在开发功能代码之前, 先编写单元测试用例代码, 测试代码确定需要编写什么产品代码. TDD虽是敏捷方法的核心实践.
 
-**构建基本的 `reactive`**
+**实现基本的 `reactive`**
 
 **需求**: 最简单的 `reactive`, 输入对象并输出对象的代理. 代理对象修改时原对象同步修改
 
@@ -61,7 +61,7 @@ TDD(Test-Driven Development), 是敏捷开发中的一项核心实践和技术, 
   唯一的难点就是 `Proxy` 语法
 3. 重构: 无
 
-**构建基本的 `effect`**
+**实现基本的 `effect`**
 
 **需求**:
 1. 输入函数, 执行函数, 当函数中被 `[GET]` 的响应式对象发生变化时重新执行函数
@@ -219,7 +219,7 @@ TDD(Test-Driven Development), 是敏捷开发中的一项核心实践和技术, 
 
   这三部分要执行的都是 `run` 我们可以保证只要执行 `run` 就触发依赖收集
 
-### 构建 `effect` 的 `scheduler` 选项 (`watch`)
+### 实现 `effect` 的 `scheduler` 选项 (`watch`)
 
 **需求**: 为 `effect` 传入第二个参数, 参数是一个对象, 其中包含 `scheduler` 函数, 当构造 Effect 时执行传入的第一个函数参数, 当响应式函数变化时执行 `scheduler` 函数. 这与 Vue 3 的 `watch` 类似
 
@@ -283,7 +283,7 @@ TDD(Test-Driven Development), 是敏捷开发中的一项核心实践和技术, 
 1. 函数上有很多动作
 2. 函数作用范围广, 语义差
 
-### 构建 `effect` 的 `stop` 与 `onStop` 选项
+### 实现 `effect` 的 `stop` 与 `onStop` 选项
 
 **需求**:
 1. 定义一个外部函数 `stop`. 传入 `runner` 让 `runner` 不再被响应式对象 trigger
@@ -373,7 +373,7 @@ TDD(Test-Driven Development), 是敏捷开发中的一项核心实践和技术, 
 3. 重构: 无
 
 
-### 构建 `Proxy` 的 `Readonly`
+### 实现 `Proxy` 的 `Readonly`
 
 **需求**: `readonly` 与 `reactive` 类似, 不过不支持 `set`
 
@@ -435,7 +435,7 @@ TDD(Test-Driven Development), 是敏捷开发中的一项核心实践和技术, 
     return new Proxy(origin, proxyConfig);
   }
   ```
-  重写 `reactive` 构建 `readonly`
+  重写 `reactive` 实现 `readonly`
   ```ts
   export function reactive(origin) {
     return createReactiveObject(origin);
@@ -447,9 +447,9 @@ TDD(Test-Driven Development), 是敏捷开发中的一项核心实践和技术, 
   ```
 3. 重构: 上面的就是重构后的代码
 
-### 构建工具函数 `isReadonly`, `isReactive`, `isProxy`
+### 实现工具函数 `isReadonly`, `isReactive`, `isProxy`
 
-**需求**: 构建工具函数, `isReadonly`, `isReactive`, `isProxy`(前两个函数二选一).
+**需求**: 实现工具函数, `isReadonly`, `isReactive`, `isProxy`(前两个函数二选一).
 
 **需求分析**: 只需要在 `[GET]` 上特判即可
 
@@ -592,7 +592,7 @@ TDD(Test-Driven Development), 是敏捷开发中的一项核心实践和技术, 
 1. **JS是动态语言, 不要尝试做静态代码分析**: 我们在实现功能的时候应该考虑什么时候完成工作不晚, 不遗漏而不是相静态语言一样想什么时候可以操作数据
 2. **实现功能时想想这个功能希望我们对外表现为什么样子**: 思考是什么而不是怎么做, 比如内层 reactive 的第一版代码并没有实现将对象转为 reactive 并附着在对象上, 而是考虑如果一个内层对象是 reactive, 那么我们应该在 `[GET]` 的时候表现的与原始对象不同. 这就启发我们只需要在 `[GET]` 的时候处理数据就可以而不需要在构造对象的时候实现这一功能.
 
-### 构建 `shadowReadonly`
+### 实现 `shadowReadonly`
 
 **需求:** `shadowReadonly` 就是只对对象外层实现 readonly, 内部对象不管, 不 Proxy
 
@@ -647,7 +647,7 @@ TDD(Test-Driven Development), 是敏捷开发中的一项核心实践和技术, 
 3. 重构
 
 
-### 构建 `ref`
+### 实现 `ref`
 
 **需求**: 实现 `ref`
   - 如果 `ref(value)` 输入的是不是对象, 那么可以
@@ -719,7 +719,7 @@ TDD(Test-Driven Development), 是敏捷开发中的一项核心实践和技术, 
 2. 实现
 
   ```ts
-  // 与 reactive 直接返回一个 Proxy 不同, 我们只有 value 一个属性, 所以要手动构建一个对象
+  // 与 reactive 直接返回一个 Proxy 不同, 我们只有 value 一个属性, 所以要手动实现一个对象
   class RefImpl {
     // 这里我们不使用全局的 targetMap 原因是
     //   - 我们这里的 Key 可以不是对象, 两个值相同的 ref 会被判定为同一个 key
@@ -787,7 +787,7 @@ TDD(Test-Driven Development), 是敏捷开发中的一项核心实践和技术, 
   }
   ```
 
-### 构建工具函数 `isRef` & `unRef` & `proxyRefs`
+### 实现工具函数 `isRef` & `unRef` & `proxyRefs`
 
 **需求**:
   - `isRef`: 判断输入是不是 `ref`

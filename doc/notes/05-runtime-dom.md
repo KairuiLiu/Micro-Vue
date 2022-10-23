@@ -203,28 +203,3 @@ document.body.append(game.view);
 // 在 PIXI 中 canvas DOM 不用于挂载元素, 新元素是挂载到 game.stage 上的
 export const el = game.stage;
 ```
-
-## `compiler-core` 实现
-
-```mermaid
-graph LR
-
-string(输入string) --> parse(parse模块) --> ast1(输出AST树) --> transform(transform模块对树CRUD) --> ast2(输出AST树) --> CodeGen(CodeGen模块) --> render(输出render)
-```
-
-构建相关模块
-
-```ts
-@packages/compiler-core
-├── src
-│   └── index.ts
-└── __tests__
-```
-
-并导出模块
-
-```TS
-export * from './reactivity/src/index';
-export * from './runtime-dom/src/index';
-export * from './compiler-core/src/index';
-```

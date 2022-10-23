@@ -2,7 +2,7 @@
 
 ### 搭建环境
 
-runtime-core 直接参与页面构建, 我们需要利用打包工具打包代码. 在打包网页时一般使用 webpack, 而在打包模块时一般使用 rollup.js. 安装 rollup 及其 TypeScript 依赖
+runtime-core 直接参与页面实现, 我们需要利用打包工具打包代码. 在打包网页时一般使用 webpack, 而在打包模块时一般使用 rollup.js. 安装 rollup 及其 TypeScript 依赖
 
 ```bash
 pnpm i -D rollup @rollup/plugin-typescript tslib rollup-plugin-sourcemaps
@@ -45,7 +45,7 @@ pnpm i -D rollup @rollup/plugin-typescript tslib rollup-plugin-sourcemaps
 
 ### 构造测试用例
 
-我们构造一个简单的 Vue demo 并尝试构建 vue-runtime 主流程使其可以将我们的 demo 渲染出来, Vue 项目一般包含如下文件
+我们构造一个简单的 Vue demo 并尝试实现 vue-runtime 主流程使其可以将我们的 demo 渲染出来, Vue 项目一般包含如下文件
 
 - `index.html`: 至少包含一个挂载点
 - `index.js`: 引入根组件, 将根组件挂载到挂载点
@@ -268,7 +268,7 @@ SFC 需要 vue-loader 编译才能实现. 而 vue-loader 的作用是将 SFC 处
 
 - `mountComponent` 挂载组件. 首先明确组件自己是没有 HTML 标签的, 挂载组件实际上是挂载组件中的子元素. 而组件存在的必要是其导出的 setup 函数中存在子元素需要的变量与函数.
 
-  我们构建组件实例在上面记录组件需要的上下文
+  我们实现组件实例在上面记录组件需要的上下文
 
   ```js
   // @packages/runtime-core/src/render.ts
@@ -328,7 +328,7 @@ SFC 需要 vue-loader 编译才能实现. 而 vue-loader 的作用是将 SFC 处
   }
   ```
 
-- 构建 `instance` 之后需要将中的子元素挂载出去, 递归 `patch` 即可
+- 实现 `instance` 之后需要将中的子元素挂载出去, 递归 `patch` 即可
 
   ```js
   // @packages/runtime-core/src/component.ts
@@ -1160,4 +1160,4 @@ apiInject
 
     在结构上是对仗的. 这 API 设计的太伟大了
 
-此外我们还构建了特殊的 `Fragment` 与 `TextNode` 这俩都是魔改 patch 实现的. 我们还实现了 `provide-inject` API, 这里借助原型链实现功能也很有趣
+此外我们还实现了特殊的 `Fragment` 与 `TextNode` 这俩都是魔改 patch 实现的. 我们还实现了 `provide-inject` API, 这里借助原型链实现功能也很有趣
