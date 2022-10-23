@@ -24,4 +24,14 @@ describe('Parse', () => {
       });
     });
   });
+
+  describe('text', () => {
+    test('inter', () => {
+      const ast = baseParse('bulabula');
+      expect(ast.children[0]).toStrictEqual({
+        type: NodeTypes.TEXT,
+        content: 'bulabula',
+      });
+    });
+  });
 });

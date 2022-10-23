@@ -17,8 +17,18 @@ function parseChildren(context) {
   let node = null as any;
   if (context.source.startsWith('{{')) node = parseInterpolation(context);
   else if (/^<[a-zA-Z]/.test(context.source)) node = parseElement(context);
-  node && nodes.push(node);
+  else node = parseText(context);
+  nodes.push(node);
   return nodes;
+}
+
+function parseText(context) {
+  const content = context.source;
+  adviceBy(context, content.length);
+  return {
+    type: NodeTypes.TEXT,
+    content,
+  };
 }
 
 function parseElement(context) {
