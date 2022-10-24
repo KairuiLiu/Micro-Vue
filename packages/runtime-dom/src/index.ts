@@ -14,6 +14,8 @@ export const setText = (el, text) => (el.nodeValue = text);
 export const setElementText = (el, text) => (el.textContent = text);
 
 export function patchProps(elem: HTMLElement, oldProps = {}, newProps = {}) {
+  oldProps ??= {};
+  newProps ??= {};
   const props = [
     ...new Set([...Object.keys(oldProps), ...Object.keys(newProps)]),
   ];

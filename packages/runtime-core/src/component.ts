@@ -52,7 +52,7 @@ function handleSetupResult(instance, res) {
 }
 
 function finishComponentSetup(instance) {
-  instance.render = instance.render || instance.type.render;
+  instance.render = instance.render || instance.type.render || compiler(instance.type.template);
 }
 
 export function isSameProps(props1 = {}, props2 = {}) {
@@ -67,7 +67,7 @@ export function nextTick(e) {
 }
 
 function componentUpdateFn(instance, container, anchor, patch) {
-  const subTree = instance.render.call(instance.proxy);
+  const subTree = instance.render.call(instance.proxy, instance.proxy);
   if (instance.next) {
     instance.vNode = instance.next;
     instance.props = instance.next.props;
@@ -99,4 +99,10 @@ export function setupRenderEffect(instance, container, anchor, patch) {
 
 export function getCurrentInstance() {
   return currentInstance;
+}
+
+let compiler;
+
+export function registerRuntimeCompiler(_compiler){
+  compiler = _compiler;
 }

@@ -5,7 +5,7 @@ import { transformExpression } from './transforms/transformExpression';
 import { transformElement } from './transforms/transformElement';
 import { transformText } from './transforms/transformText';
 
-export function baseCompile(template, options) {
+export function baseCompile(template, options = {}) {
   const ast = baseParse(template);
   transform(
     ast,

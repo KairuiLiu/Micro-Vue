@@ -5,6 +5,8 @@ export const typeSymbol = {
   TextNode: Symbol('TextNode'),
 };
 
+export { createVNode as createElementVNode };
+
 export function createVNode(component, props = {}, children = []) {
   return {
     type: component,

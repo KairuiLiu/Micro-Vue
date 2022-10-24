@@ -56,3 +56,6 @@ export function LIS(s) {
 }
 
 export const isString = (value) => typeof value === 'string';
+export const toDisplayString = (val) => {
+  return String(val);
+};

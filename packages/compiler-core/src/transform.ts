@@ -5,6 +5,7 @@ export function transform(root, options = {}) {
   const context = createTransformContext(root, options);
   traverseNode(root, context);
   createRootCodegen(root, context);
+  root.helpers.push(...context.helpers.keys());
 }
 
 function createTransformContext(root: any, options: any): any {
