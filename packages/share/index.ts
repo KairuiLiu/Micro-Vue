@@ -54,3 +54,5 @@ export function LIS(s) {
   }
   return res;
 }
+
+export const isString = (value) => typeof value === 'string';
