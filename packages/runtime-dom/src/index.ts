@@ -23,7 +23,7 @@ export function patchProps(elem: HTMLElement, oldProps = {}, newProps = {}) {
     let ek = /^on[A-Z]/.test(k)
       ? k.replace(/^on([A-Z].*)/, (_, e) => e[0].toLowerCase() + e.slice(1))
       : undefined;
-    if (isUNKey(k, oldProps) && (!isUNKey(k, newProps) || ek))
+    if (isUNKey(k, oldProps) && !isUNKey(k, newProps))
       ek ? elem.removeEventListener(ek, oldProps[k]) : elem.removeAttribute(k);
     else if (isUNKey(k, newProps))
       ek

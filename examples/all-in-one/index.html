@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="./img/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="./img/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="./img/favicon-16x16.png"
+    />
+    <link rel="manifest" href="./img/site.webmanifest" />
+    <link rel="mask-icon" href="./img/safari-pinned-tab.svg" color="#5bbad5" />
+    <meta name="msapplication-TileColor" content="#2b5797" />
+    <meta name="theme-color" content="#ffffff" />
+    <title>micro-vue</title>
+    <link rel="stylesheet" href="./css/style.css" />
+    <script src="./js/index.js" type="module" defer></script>
+  </head>
+
+  <body>
+    <div id="app">
+      <nav>
+        <div class="container">
+          <div class="title">micro-vue</div>
+        </div>
+      </nav>
+      <section id="banner">
+        <div class="main">
+          <div class="title">micro-vue</div>
+          <div class="subtitle">极其简易的 Vue.js 实现</div>
+          <div class="detail"></div>
+          <div class="btns">
+            <a href="https://github.com/KairuiLiu/micro-vue" class="btn mr" prime
+              >GitHub</a
+            >
+            <a
+              href="https://raw.githubusercontent.com/KairuiLiu/micro-vue/master/lib/micro-vue.esm.js"
+              class="btn"
+              target="_blank"
+              >下载</a
+            >
+          </div>
+        </div>
+        <div class="image">
+          <div class="image-container image-bg">
+            <img src="./img/logo.svg" alt="logo" />
+          </div>
+          <div class="image-container">
+            <img src="./img/logo.svg" alt="logo" />
+          </div>
+        </div>
+      </section>
+      <section id="features">
+        <article>
+          <div class="icon">♻️</div>
+          <div class="title">reactivity - ref 支持</div>
+          <div class="playground" id="reactivity_playground_1"></div>
+        </article>
+        <article>
+          <div class="icon">🧮</div>
+          <div class="title">reactivity - computed 支持</div>
+          <div class="playground" id="reactivity_playground_2"></div>
+        </article>
+        <article>
+          <div class="icon">📬</div>
+          <div class="title">runtime-core - provide-inject 支持</div>
+          <div class="playground" id="runtime_core_playground_1"></div>
+        </article>
+        <article>
+          <div class="icon">🔌</div>
+          <div class="title">runtime-core - slot 支持</div>
+          <div class="playground" id="runtime_core_playground_2"></div>
+        </article>
+        <article>
+          <div class="icon">🎨</div>
+          <div class="title">runtime-dom - patchProps 支持</div>
+          <div class="playground" id="runtime_dom_playground_1"></div>
+        </article>
+        <article>
+          <div class="icon">🖥️</div>
+          <div class="title">compiler-core - 简单编译支持</div>
+
+          <div class="playground">
+            &lt;div&gt; Wow {{ message }} &lt;/div&gt;
+          </div>
+          <div class="playground">将被编译为</div>
+          <div class="playground" id="compiler_core_playground_1"></div>
+        </article>
+      </section>
+    </div>
+  </body>
+</html>
