@@ -1,9 +1,9 @@
 import { createRenderer } from '../../runtime-core/src/render';
 import { isUNKey } from '../../share';
 
-export const createElement = (v) => document.createElement(v);
+export const createElement = document.createElement.bind(document);
 
-export const createText = (v) => document.createTextNode(v);
+export const createText = document.createTextNode.bind(document);
 
 export const remove = (el) => el.parent && el.parent.remove(el);
 
